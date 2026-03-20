@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Review QR Sign Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;700&family=Montserrat:wght@400;700&family=Playfair+Display:wght@400;700&family=Oswald:wght@400;700&family=Lato:wght@400;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="logo">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect width="32" height="32" rx="8" fill="#1a73e8"/>
+          <path d="M16 8 L22 20 L10 20 Z" fill="white"/>
+          <circle cx="22" cy="20" r="4" fill="#34a853"/>
+        </svg>
+        <span>ReviewSign</span>
+      </div>
+      <div class="header-tagline">Create a custom Google Review QR sign in minutes</div>
+    </div>
+  </header>
+
+  <nav class="step-nav" role="navigation" aria-label="Progress">
+    <div class="step-nav-inner">
+      <div class="step-item active" id="nav-step-1">
+        <div class="step-circle">1</div>
+        <span class="step-label">Choose Shape</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-item" id="nav-step-2">
+        <div class="step-circle">2</div>
+        <span class="step-label">Find Business</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-item" id="nav-step-3">
+        <div class="step-circle">3</div>
+        <span class="step-label">Design Sign</span>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step-item" id="nav-step-4">
+        <div class="step-circle">4</div>
+        <span class="step-label">Checkout</span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main-content">
+
+    <!-- ===== STEP 1: CHOOSE SHAPE ===== -->
+    <section id="step-1" class="step-panel active">
+      <div class="step-container">
+        <div class="step-hero">
+          <h1>Choose your sign shape</h1>
+          <p class="step-subtitle">Pick the shape that fits your space and style. You'll customise colours and text in the next steps.</p>
+        </div>
+
+        <div class="shape-picker-grid">
+
+          <!-- Portrait -->
+          <div class="shape-picker-card active" data-shape="portrait">
+            <div class="shape-thumb-wrap">
+              <svg viewBox="0 0 60 84" xmlns="http://www.w3.org/2000/svg" class="shape-svg">
+                <rect x="3" y="3" width="54" height="78" rx="3" fill="currentColor" fill-opacity="0.10" stroke="currentColor" stroke-width="2.5"/>
+              </svg>
+            </div>
+            <div class="shape-card-name">Portrait</div>
+            <div class="shape-card-desc">Counter sign · most common</div>
+          </div>
+
+          <!-- Landscape -->
+          <div class="shape-picker-card" data-shape="landscape">
+            <div class="shape-thumb-wrap">
+              <svg viewBox="0 0 84 60" xmlns="http://www.w3.org/2000/svg" class="shape-svg">
+                <rect x="3" y="3" width="78" height="54" rx="3" fill="currentColor" fill-opacity="0.10" stroke="currentColor" stroke-width="2.5"/>
+              </svg>
+            </div>
+            <div class="shape-card-name">Landscape</div>
+            <div class="shape-card-desc">Wide format · extra text space</div>
+          </div>
+
+          <!-- Rounded -->
+          <div class="shape-picker-card" data-shape="rounded">
+            <div class="shape-thumb-wrap">
+              <svg viewBox="0 0 84 60" xmlns="http://www.w3.org/2000/svg" class="shape-svg">
+                <rect x="3" y="3" width="78" height="54" rx="14" fill="currentColor" fill-opacity="0.10" stroke="currentColor" stroke-width="2.5"/>
+              </svg>
+            </div>
+            <div class="shape-card-name">Rounded</div>
+            <div class="shape-card-desc">Premium feel · cafés &amp; salons</div>
+          </div>
+
+          <!-- Arch -->
+          <div class="shape-picker-card" data-shape="arch">
+            <div class="shape-thumb-wrap">
+              <svg viewBox="0 0 60 84" xmlns="http://www.w3.org/2000/svg" class="shape-svg">
+                <path d="M3,84 L3,30 A27,27 0,0,1,57,30 L57,84 Z" fill="currentColor" fill-opacity="0.10" stroke="currentColor" stroke-width="2.5"/>
+              </svg>
+            </div>
+            <div class="shape-card-name">Arch</div>
+            <div class="shape-card-desc">Boutique &amp; hospitality</div>
+          </div>
+
+          <!-- Circle -->
+          <div class="shape-picker-card" data-shape="circle">
+            <div class="shape-thumb-wrap">
+              <svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" class="shape-svg">
+                <circle cx="30" cy="30" r="27" fill="currentColor" fill-opacity="0.10" stroke="currentColor" stroke-width="2.5"/>
+              </svg>
+            </div>
+            <div class="shape-card-name">Circle</div>
+            <div class="shape-card-desc">Clean &amp; minimal</div>
+          </div>
+
+          <!-- Speech Bubble -->
+          <div class="shape-picker-card" data-shape="speech">
+            <div class="shape-thumb-wrap">
+              <svg viewBox="0 0 84 72" xmlns="http://www.w3.org/2000/svg" class="shape-svg">
+                <path d="M13,3 L71,3 Q81,3 81,13 L81,47 Q81,57 71,57 L38,57 L30,70 L22,57 L13,57 Q3,57 3,47 L3,13 Q3,3 13,3 Z" fill="currentColor" fill-opacity="0.10" stroke="currentColor" stroke-width="2.5"/>
+              </svg>
+            </div>
+            <div class="shape-card-name">Speech Bubble</div>
+            <div class="shape-card-desc">Playful · reinforces "review"</div>
+          </div>
+
+          <!-- Star -->
+          <div class="shape-picker-card" data-shape="star">
+            <div class="shape-thumb-wrap">
+              <svg viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg" class="shape-svg">
+                <polygon points="30,2 37,20 57,21 41,34 46,53 30,42 14,53 19,34 3,21 23,20" fill="currentColor" fill-opacity="0.10" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="shape-card-name">Star</div>
+            <div class="shape-card-desc">Tied to ratings &amp; reviews</div>
+          </div>
+
+          <!-- Location Pin -->
+          <div class="shape-picker-card" data-shape="pin">
+            <div class="shape-thumb-wrap">
+              <svg viewBox="0 0 54 78" xmlns="http://www.w3.org/2000/svg" class="shape-svg">
+                <path d="M27,75 C12,56 3,44 3,27 A24,24 0,0,1,51,27 C51,44 42,56 27,75 Z" fill="currentColor" fill-opacity="0.10" stroke="currentColor" stroke-width="2.5"/>
+              </svg>
+            </div>
+            <div class="shape-card-name">Location Pin</div>
+            <div class="shape-card-desc">Great for local services</div>
+          </div>
+
+          <!-- House -->
+          <div class="shape-picker-card" data-shape="house">
+            <div class="shape-thumb-wrap">
+              <svg viewBox="0 0 60 78" xmlns="http://www.w3.org/2000/svg" class="shape-svg">
+                <polygon points="3,42 30,3 57,42 57,75 3,75" fill="currentColor" fill-opacity="0.10" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div class="shape-card-name">House</div>
+            <div class="shape-card-desc">Homey local businesses</div>
+          </div>
+
+        </div><!-- /shape-picker-grid -->
+
+        <div class="step-actions">
+          <button id="shape-to-step-2" class="btn-primary btn-lg">
+            Continue
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== STEP 2: FIND BUSINESS ===== -->
+    <section id="step-2" class="step-panel">
+      <div class="step-container narrow">
+        <div class="step-hero">
+          <h1>Find your business on Google</h1>
+          <p class="step-subtitle">We'll create a direct link to your Google Reviews page so customers can leave feedback with one scan.</p>
+        </div>
+
+        <div class="search-box">
+          <div class="search-input-wrapper">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input type="text" id="business-search" placeholder="Type your business name..." autocomplete="off" spellcheck="false">
+            <div id="search-spinner" class="spinner hidden"></div>
+          </div>
+          <div id="places-results" class="places-dropdown" role="listbox" aria-label="Business suggestions"></div>
+        </div>
+
+        <div id="places-attribution" style="display:none"></div>
+
+        <div id="selected-business" class="selected-card hidden">
+          <div class="selected-card-inner">
+            <div class="selected-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+            <div class="selected-info">
+              <div class="selected-name" id="selected-name"></div>
+              <div class="selected-address" id="selected-address"></div>
+              <div class="review-url-preview">
+                <span class="url-label">Review URL:</span>
+                <a id="selected-url" href="#" target="_blank" class="url-link"></a>
+              </div>
+            </div>
+            <button class="btn-ghost" id="change-business">Change</button>
+          </div>
+        </div>
+
+        <div class="step-actions" style="display:flex;gap:12px;justify-content:center;align-items:center">
+          <button id="back-to-step-1" class="btn-ghost">← Back</button>
+          <button id="to-step-3" class="btn-primary btn-lg" disabled>
+            Design My Sign
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== STEP 3: DESIGN SIGN ===== -->
+    <section id="step-3" class="step-panel">
+      <div class="designer-layout">
+
+        <aside class="controls-panel">
+          <div class="controls-scroll">
+
+            <!-- Material -->
+            <div class="control-group">
+              <h3 class="control-heading">Material</h3>
+              <div class="material-toggle">
+                <button class="material-btn active" data-material="acrylic">Acrylic</button>
+                <button class="material-btn" data-material="wood">Wood</button>
+              </div>
+            </div>
+
+            <!-- Acrylic Colors -->
+            <div class="control-group" id="acrylic-colors-group">
+              <h3 class="control-heading">Acrylic Colour</h3>
+              <div class="acrylic-grid">
+                <button class="acrylic-swatch" data-color="#FAFAFA" title="White"       style="background:#FAFAFA;border-color:#ccc"></button>
+                <button class="acrylic-swatch" data-color="#9E9E9E" title="Silver"      style="background:#9E9E9E"></button>
+                <button class="acrylic-swatch" data-color="#29B6F6" title="Sky Blue"    style="background:#29B6F6"></button>
+                <button class="acrylic-swatch selected" data-color="#1565C0" title="Royal Blue" style="background:#1565C0"></button>
+                <button class="acrylic-swatch" data-color="#7B2D8B" title="Purple"      style="background:#7B2D8B"></button>
+                <button class="acrylic-swatch" data-color="#E91E8C" title="Hot Pink"    style="background:#E91E8C"></button>
+                <button class="acrylic-swatch" data-color="#C62828" title="Red"         style="background:#C62828"></button>
+                <button class="acrylic-swatch" data-color="#FF8F00" title="Amber"       style="background:#FF8F00"></button>
+                <button class="acrylic-swatch" data-color="#FDD835" title="Yellow"      style="background:#FDD835;border-color:#ccc"></button>
+                <button class="acrylic-swatch" data-color="#8BC34A" title="Lime"        style="background:#8BC34A"></button>
+                <button class="acrylic-swatch" data-color="#2E7D32" title="Green"       style="background:#2E7D32"></button>
+                <button class="acrylic-swatch" data-color="#00897B" title="Teal"        style="background:#00897B"></button>
+                <button class="acrylic-swatch" data-color="#5D4037" title="Chocolate"   style="background:#5D4037"></button>
+                <button class="acrylic-swatch" data-color="#212121" title="Black"       style="background:#212121"></button>
+              </div>
+            </div>
+
+            <!-- Wood Color -->
+            <div class="control-group" id="wood-color-group" style="display:none">
+              <h3 class="control-heading">Wood Colour</h3>
+              <input type="color" id="wood-color" value="#C8853A" style="width:100%;height:44px;border:2px solid var(--border);border-radius:8px;cursor:pointer;padding:3px;background:var(--surface)">
+            </div>
+
+            <!-- Font -->
+            <div class="control-group">
+              <h3 class="control-heading">Font</h3>
+              <div class="font-grid">
+                <label class="font-option" style="font-family:Montserrat"><input type="radio" name="font" value="Montserrat" checked><span>Montserrat</span></label>
+                <label class="font-option" style="font-family:Roboto"><input type="radio" name="font" value="Roboto"><span>Roboto</span></label>
+                <label class="font-option" style="font-family:'Playfair Display'"><input type="radio" name="font" value="Playfair Display"><span>Playfair</span></label>
+                <label class="font-option" style="font-family:Oswald"><input type="radio" name="font" value="Oswald"><span>Oswald</span></label>
+                <label class="font-option" style="font-family:Lato"><input type="radio" name="font" value="Lato"><span>Lato</span></label>
+                <label class="font-option" style="font-family:'Dancing Script'"><input type="radio" name="font" value="Dancing Script"><span>Script</span></label>
+              </div>
+            </div>
+
+            <!-- CTA Text -->
+            <div class="control-group">
+              <h3 class="control-heading">Call-to-Action Text</h3>
+              <div class="cta-presets">
+                <button class="cta-preset active" data-text="Leave Us a Google Review!">Leave Us a Google Review!</button>
+                <button class="cta-preset" data-text="Scan to Share Your Experience">Scan to Share Your Experience</button>
+                <button class="cta-preset" data-text="How Did We Do? Let Us Know!">How Did We Do? Let Us Know!</button>
+                <button class="cta-preset" data-text="Your Review Means the World to Us">Your Review Means the World to Us</button>
+              </div>
+              <div class="custom-cta-wrapper">
+                <input type="text" id="cta-custom" placeholder="Or type your own message..." maxlength="60">
+              </div>
+            </div>
+
+            <!-- Social Media -->
+            <div class="control-group">
+              <h3 class="control-heading">Social Media <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-3)">(optional)</span></h3>
+              <div class="social-field">
+                <div class="social-icon-wrap">
+                  <svg viewBox="0 0 511 511.9" width="18" height="18" fill="currentColor">
+                    <path d="m510.949219 150.5c-1.199219-27.199219-5.597657-45.898438-11.898438-62.101562-6.5-17.199219-16.5-32.597657-29.601562-45.398438-12.800781-13-28.300781-23.101562-45.300781-29.5-16.296876-6.300781-34.898438-10.699219-62.097657-11.898438-27.402343-1.300781-36.101562-1.601562-105.601562-1.601562s-78.199219.300781-105.5 1.5c-27.199219 1.199219-45.898438 5.601562-62.097657 11.898438-17.203124 6.5-32.601562 16.5-45.402343 29.601562-13 12.800781-23.097657 28.300781-29.5 45.300781-6.300781 16.300781-10.699219 34.898438-11.898438 62.097657-1.300781 27.402343-1.601562 36.101562-1.601562 105.601562s.300781 78.199219 1.5 105.5c1.199219 27.199219 5.601562 45.898438 11.902343 62.101562 6.5 17.199219 16.597657 32.597657 29.597657 45.398438 12.800781 13 28.300781 23.101562 45.300781 29.5 16.300781 6.300781 34.898438 10.699219 62.101562 11.898438 27.296876 1.203124 36 1.5 105.5 1.5s78.199219-.296876 105.5-1.5c27.199219-1.199219 45.898438-5.597657 62.097657-11.898438 34.402343-13.300781 61.601562-40.5 74.902343-74.898438 6.296876-16.300781 10.699219-34.902343 11.898438-62.101562 1.199219-27.300781 1.5-36 1.5-105.5s-.101562-78.199219-1.300781-105.5zm-46.097657 209c-1.101562 25-5.300781 38.5-8.800781 47.5-8.601562 22.300781-26.300781 40-48.601562 48.601562-9 3.5-22.597657 7.699219-47.5 8.796876-27 1.203124-35.097657 1.5-103.398438 1.5s-76.5-.296876-103.402343-1.5c-25-1.097657-38.5-5.296876-47.5-8.796876-11.097657-4.101562-21.199219-10.601562-29.398438-19.101562-8.5-8.300781-15-18.300781-19.101562-29.398438-3.5-9-7.699219-22.601562-8.796876-47.5-1.203124-27-1.5-35.101562-1.5-103.402343s.296876-76.5 1.5-103.398438c1.097657-25 5.296876-38.5 8.796876-47.5 4.101562-11.101562 10.601562-21.199219 19.203124-29.402343 8.296876-8.5 18.296876-15 29.398438-19.097657 9-3.5 22.601562-7.699219 47.5-8.800781 27-1.199219 35.101562-1.5 103.398438-1.5 68.402343 0 76.5.300781 103.402343 1.5 25 1.101562 38.5 5.300781 47.5 8.800781 11.097657 4.097657 21.199219 10.597657 29.398438 19.097657 8.5 8.300781 15 18.300781 19.101562 29.402343 3.5 9 7.699219 22.597657 8.800781 47.5 1.199219 27 1.5 35.097657 1.5 103.398438s-.300781 76.300781-1.5 103.300781zm0 0"/>
+                    <path d="m256.449219 124.5c-72.597657 0-131.5 58.898438-131.5 131.5s58.902343 131.5 131.5 131.5c72.601562 0 131.5-58.898438 131.5-131.5s-58.898438-131.5-131.5-131.5zm0 216.800781c-47.097657 0-85.300781-38.199219-85.300781-85.300781s38.203124-85.300781 85.300781-85.300781c47.101562 0 85.300781 38.199219 85.300781 85.300781s-38.199219 85.300781-85.300781 85.300781zm0 0"/>
+                    <path d="m423.851562 119.300781c0 16.953125-13.746093 30.699219-30.703124 30.699219-16.953126 0-30.699219-13.746094-30.699219-30.699219 0-16.957031 13.746093-30.699219 30.699219-30.699219 16.957031 0 30.703124 13.742188 30.703124 30.699219zm0 0"/>
+                  </svg>
+                </div>
+                <input type="text" id="input-instagram" placeholder="@yourhandle" maxlength="40">
+              </div>
+              <div class="social-field" style="margin-top:8px">
+                <div class="social-icon-wrap">
+                  <svg viewBox="0 0 512 512" width="18" height="18" fill="currentColor">
+                    <path d="M452,0H60C26.916,0,0,26.916,0,60v392c0,33.084,26.916,60,60,60h392c33.084,0,60-26.916,60-60V60C512,26.916,485.084,0,452,0z M472,452c0,11.028-8.972,20-20,20H338V309h61.79L410,247h-72v-43c0-16.975,13.025-30,30-30h41v-62h-41c-50.923,0-91.978,41.25-91.978,92.174V247H216v62h60.022v163H60c-11.028,0-20-8.972-20-20V60c0-11.028,8.972-20,20-20h392c11.028,0,20,8.972,20,20V452z"/>
+                  </svg>
+                </div>
+                <input type="text" id="input-facebook" placeholder="facebook.com/yourpage" maxlength="60">
+              </div>
+              <div style="margin-top:12px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                  <label style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.04em">Position from bottom</label>
+                  <span id="social-pad-val" style="font-size:12px;font-weight:600;color:var(--text-3)">40px</span>
+                </div>
+                <input type="range" id="social-pad" min="10" max="200" value="40" step="1" style="width:100%;accent-color:var(--blue)">
+              </div>
+            </div>
+
+            <!-- QR Color -->
+            <div class="control-group">
+              <h3 class="control-heading">QR Code Colour</h3>
+              <input type="color" id="color-qr" value="#000000" style="width:100%;height:44px;border:2px solid var(--border);border-radius:8px;cursor:pointer;padding:3px;background:var(--surface)">
+            </div>
+
+            <!-- Reset -->
+            <div class="control-group">
+              <button id="reset-layout" class="btn-ghost" style="width:100%;text-align:center">↺ Reset element positions</button>
+            </div>
+
+          </div>
+        </aside>
+
+        <!-- Preview -->
+        <div class="preview-panel">
+          <div class="preview-sticky">
+            <div class="preview-header">
+              <h2>Live Preview</h2>
+              <div class="preview-badge">Updates instantly</div>
+            </div>
+            <div class="canvas-wrapper">
+              <canvas id="sign-canvas" width="480" height="680"></canvas>
+              <div id="canvas-loading" class="canvas-loading">
+                <div class="spinner"></div>
+                <span>Generating…</span>
+              </div>
+            </div>
+            <div class="drag-hint">Drag any text or QR to reposition it</div>
+            <div class="preview-actions">
+              <button id="back-to-step-2" class="btn-ghost">← Back</button>
+              <button id="to-step-4" class="btn-primary btn-lg">
+                Choose Download Option
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ===== STEP 4: CHECKOUT ===== -->
+    <section id="step-4" class="step-panel">
+      <div class="step-container">
+        <div class="step-hero">
+          <h1>Choose your download</h1>
+          <p class="step-subtitle">One-time purchase. Instant download after payment.</p>
+        </div>
+
+        <div class="pricing-grid">
+          <div class="pricing-card" data-tier="digital">
+            <div class="pricing-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            </div>
+            <h3>Digital Download</h3>
+            <div class="price">$14.99</div>
+            <ul class="feature-list">
+              <li>✓ High-resolution PNG</li>
+              <li>✓ Perfect for digital screens</li>
+              <li>✓ Email &amp; social media ready</li>
+              <li>✓ Instant download</li>
+            </ul>
+            <button class="checkout-btn btn-outline">Buy Digital – $14.99</button>
+          </div>
+
+          <div class="pricing-card featured" data-tier="print">
+            <div class="pricing-badge">Most Popular</div>
+            <div class="pricing-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            </div>
+            <h3>Print-Ready PDF</h3>
+            <div class="price">$29.99</div>
+            <ul class="feature-list">
+              <li>✓ 300 DPI print-quality PDF</li>
+              <li>✓ Ready for professional printing</li>
+              <li>✓ Multiple sizes (A4, Letter, 5×7)</li>
+              <li>✓ Instant download</li>
+            </ul>
+            <button class="checkout-btn btn-primary">Buy Print-Ready – $29.99</button>
+          </div>
+        </div>
+
+        <div class="checkout-footer">
+          <div class="security-badges">
+            <span>🔒 Secure payment via Stripe</span>
+            <span>💳 All major cards accepted</span>
+            <span>↩ 30-day money-back guarantee</span>
+          </div>
+          <button id="back-to-step-3" class="btn-ghost" style="margin-top:24px">← Back to Designer</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="qr-offscreen" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:768px;height:768px;"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+  <script src="/app.js"></script>
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key={{GOOGLE_API_KEY}}&libraries=places&callback=initPlacesAPI"
+    async defer
+  ></script>
+</body>
+</html>
