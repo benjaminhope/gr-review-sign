@@ -76,8 +76,9 @@ const state = {
   socialPad:    40,
   layout:       getDefaultLayout('portrait'),
   bounds:       {},
-  dragging:null, dragOffset:{x:0,y:0},
+  dragging:null, dragOffset:{x:0,y:0}, selected:null,
   qrDataUrl:null, renderCounter:0,
+  visible:{qr:true,businessName:true,reviewLabel:true,stars:true,cta:true,instruction:true},
 };
 
 let qrImgCache = null, controlsWired = false;
@@ -232,7 +233,7 @@ function drawSign(qrImg) {
   };
 
   // QR Code
-  {
+  if(state.visible.qr) {
     const {x,y}=lay.qr;
     // No white box for either material — QR floats on the background
     if(qrImg) ctx.drawImage(qrImg,x,y,QR_SIZE,QR_SIZE);
@@ -244,7 +245,7 @@ function drawSign(qrImg) {
   }
 
   // Business Name
-  {
+  if(state.visible.businessName) {
     const {x,y}=lay.businessName;
     const name=state.businessName||'Your Business Name';
     setTextStyle(`bold 36px '${state.font}'`,textColor);
@@ -254,7 +255,7 @@ function drawSign(qrImg) {
   }
 
   // Google Reviews label
-  {
+  if(state.visible.reviewLabel) {
     const {x,y}=lay.reviewLabel;
     setTextStyle('700 13px Inter',textColor,isCentered?'center':'left');
     ctx.textBaseline='top';
@@ -263,7 +264,7 @@ function drawSign(qrImg) {
   }
 
   // Stars
-  {
+  if(state.visible.stars) {
     const {x,y}=lay.stars;
     setTextStyle('24px Arial',textColor,isCentered?'center':'left');
     ctx.textBaseline='top';
@@ -272,7 +273,7 @@ function drawSign(qrImg) {
   }
 
   // CTA
-  {
+  if(state.visible.cta) {
     const {x,y}=lay.cta;
     setTextStyle(`bold 24px '${state.font}'`,textColor);
     const nl=countLines(ctx,state.ctaText,MAX_TEXT_W,3);
@@ -281,7 +282,7 @@ function drawSign(qrImg) {
   }
 
   // Instruction
-  {
+  if(state.visible.instruction) {
     const {x,y}=lay.instruction;
     setTextStyle('400 12px Inter',dimColor);
     ctx.textBaseline='top';
@@ -317,9 +318,10 @@ function drawSign(qrImg) {
 
   ctx.restore();
 
-  // Drag indicator (in logical space, inside its own scaled save)
-  if(state.dragging && state.bounds[state.dragging]) {
-    const b=state.bounds[state.dragging];
+  // Selection / drag indicator
+  const _sel=state.dragging||state.selected;
+  if(_sel && state.bounds[_sel]) {
+    const b=state.bounds[_sel];
     ctx.save();ctx.scale(RENDER_SCALE,RENDER_SCALE);
     ctx.strokeStyle='#1a73e8';ctx.lineWidth=2;ctx.setLineDash([6,4]);
     ctx.strokeRect(b.x-5,b.y-5,b.w+10,b.h+10);ctx.setLineDash([]);ctx.restore();
@@ -557,6 +559,18 @@ function wireControls(){
   // Reset layout
   document.getElementById('reset-layout')?.addEventListener('click',()=>{state.layout=getDefaultLayout(state.shape);renderCanvas();});
 
+  wireElementToggles();
+  document.querySelectorAll('[data-align]').forEach(btn=>btn.addEventListener('click',()=>alignSelected(btn.dataset.align)));
+  document.getElementById('delete-selected')?.addEventListener('click',()=>{
+    if(!state.selected)return;
+    const key=state.selected;
+    state.visible[key]=false;
+    const tog=document.querySelector(`[data-element-key="${key}"]`);
+    if(tog){tog.textContent='Show';tog.classList.add('el-off');}
+    state.selected=null;updateAlignToolbar();renderSync();
+  });
+  updateAlignToolbar();
+
   wireDragDrop();
 }
 
@@ -575,16 +589,52 @@ function hitTest(x,y){
 function wireDragDrop(){
   signCanvas.addEventListener('mousedown',e=>{
     const pos=canvasPos(e.clientX,e.clientY),key=hitTest(pos.x,pos.y);
-    if(key){state.dragging=key;state.dragOffset={x:pos.x-state.layout[key].x,y:pos.y-state.layout[key].y};signCanvas.style.cursor='grabbing';e.preventDefault();}
+    if(key){state.dragging=key;state.selected=key;state.dragOffset={x:pos.x-state.layout[key].x,y:pos.y-state.layout[key].y};signCanvas.style.cursor='grabbing';updateAlignToolbar();e.preventDefault();}
+    else{state.selected=null;updateAlignToolbar();renderSync();}
   });
   window.addEventListener('mousemove',e=>{
     if(state.dragging){const pos=canvasPos(e.clientX,e.clientY);state.layout[state.dragging].x=Math.round(pos.x-state.dragOffset.x);state.layout[state.dragging].y=Math.round(pos.y-state.dragOffset.y);renderSync();}
     else{const pos=canvasPos(e.clientX,e.clientY);signCanvas.style.cursor=hitTest(pos.x,pos.y)?'grab':'default';}
   });
   window.addEventListener('mouseup',()=>{if(state.dragging){state.dragging=null;signCanvas.style.cursor='default';}});
-  signCanvas.addEventListener('touchstart',e=>{const t=e.touches[0],pos=canvasPos(t.clientX,t.clientY),key=hitTest(pos.x,pos.y);if(key){state.dragging=key;state.dragOffset={x:pos.x-state.layout[key].x,y:pos.y-state.layout[key].y};e.preventDefault();}},{passive:false});
+  signCanvas.addEventListener('touchstart',e=>{const t=e.touches[0],pos=canvasPos(t.clientX,t.clientY),key=hitTest(pos.x,pos.y);if(key){state.dragging=key;state.selected=key;state.dragOffset={x:pos.x-state.layout[key].x,y:pos.y-state.layout[key].y};updateAlignToolbar();e.preventDefault();}},{passive:false});
   window.addEventListener('touchmove',e=>{if(!state.dragging)return;const t=e.touches[0],pos=canvasPos(t.clientX,t.clientY);state.layout[state.dragging].x=Math.round(pos.x-state.dragOffset.x);state.layout[state.dragging].y=Math.round(pos.y-state.dragOffset.y);renderSync();e.preventDefault();},{passive:false});
   window.addEventListener('touchend',()=>{state.dragging=null;});
+}
+
+// ── Element Visibility & Alignment ───────────────────
+function wireElementToggles(){
+  document.querySelectorAll('[data-element-key]').forEach(btn=>{
+    const key=btn.dataset.elementKey;
+    btn.addEventListener('click',()=>{
+      state.visible[key]=!state.visible[key];
+      btn.textContent=state.visible[key]?'Hide':'Show';
+      btn.classList.toggle('el-off',!state.visible[key]);
+      if(!state.visible[key]&&state.selected===key){state.selected=null;updateAlignToolbar();}
+      renderSync();
+    });
+  });
+}
+
+function updateAlignToolbar(){
+  const names={qr:'QR Code',businessName:'Business Name',reviewLabel:'Google Reviews',stars:'Stars',cta:'Call to Action',instruction:'Instruction'};
+  document.getElementById('align-label').textContent=state.selected?(names[state.selected]||state.selected):'Select an element';
+  const on=!!state.selected;
+  document.querySelectorAll('.align-btn').forEach(b=>b.disabled=!on);
+}
+
+function alignSelected(dir){
+  const key=state.selected;
+  if(!key||!state.bounds[key])return;
+  const cfg=SHAPE_CONFIGS[state.shape];
+  const W=cfg.W,H=cfg.H,b=state.bounds[key];
+  if(dir==='left')        state.layout[key].x+=-b.x;
+  else if(dir==='hcenter')state.layout[key].x+=(W/2)-(b.x+b.w/2);
+  else if(dir==='right')  state.layout[key].x+=W-(b.x+b.w);
+  else if(dir==='top')    state.layout[key].y+=-b.y;
+  else if(dir==='vcenter')state.layout[key].y+=(H/2)-(b.y+b.h/2);
+  else if(dir==='bottom') state.layout[key].y+=H-(b.y+b.h);
+  renderSync();
 }
 
 // ── Checkout ─────────────────────────────────────────

@@ -327,6 +327,19 @@
               <input type="color" id="color-qr" value="#000000" style="width:100%;height:44px;border:2px solid var(--border);border-radius:8px;cursor:pointer;padding:3px;background:var(--surface)">
             </div>
 
+            <!-- Elements -->
+            <div class="control-group">
+              <h3 class="control-heading">Elements</h3>
+              <div class="element-list">
+                <div class="element-row"><span class="element-name">QR Code</span><button class="el-toggle" data-element-key="qr">Hide</button></div>
+                <div class="element-row"><span class="element-name">Business Name</span><button class="el-toggle" data-element-key="businessName">Hide</button></div>
+                <div class="element-row"><span class="element-name">Google Reviews</span><button class="el-toggle" data-element-key="reviewLabel">Hide</button></div>
+                <div class="element-row"><span class="element-name">Stars</span><button class="el-toggle" data-element-key="stars">Hide</button></div>
+                <div class="element-row"><span class="element-name">Call to Action</span><button class="el-toggle" data-element-key="cta">Hide</button></div>
+                <div class="element-row"><span class="element-name">Instruction</span><button class="el-toggle" data-element-key="instruction">Hide</button></div>
+              </div>
+            </div>
+
             <!-- Reset -->
             <div class="control-group">
               <button id="reset-layout" class="btn-ghost" style="width:100%;text-align:center">↺ Reset element positions</button>
@@ -341,6 +354,20 @@
             <div class="preview-header">
               <h2>Live Preview</h2>
               <div class="preview-badge">Updates instantly</div>
+            </div>
+            <div id="align-toolbar" class="align-toolbar">
+              <span class="align-label" id="align-label">Select an element</span>
+              <div class="align-btns">
+                <button class="align-btn" data-align="left" title="Align left" disabled><svg width="16" height="16" viewBox="0 0 16 16"><rect x="1" y="2" width="2" height="12" rx="1" fill="currentColor"/><rect x="4" y="5" width="7" height="6" rx="1" fill="currentColor"/></svg></button>
+                <button class="align-btn" data-align="hcenter" title="Center horizontally" disabled><svg width="16" height="16" viewBox="0 0 16 16"><rect x="7" y="1" width="2" height="14" rx="1" fill="currentColor"/><rect x="2" y="5" width="12" height="6" rx="1" fill="currentColor"/></svg></button>
+                <button class="align-btn" data-align="right" title="Align right" disabled><svg width="16" height="16" viewBox="0 0 16 16"><rect x="13" y="2" width="2" height="12" rx="1" fill="currentColor"/><rect x="5" y="5" width="7" height="6" rx="1" fill="currentColor"/></svg></button>
+                <div class="align-sep"></div>
+                <button class="align-btn" data-align="top" title="Align top" disabled><svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="1" width="12" height="2" rx="1" fill="currentColor"/><rect x="5" y="4" width="6" height="7" rx="1" fill="currentColor"/></svg></button>
+                <button class="align-btn" data-align="vcenter" title="Center vertically" disabled><svg width="16" height="16" viewBox="0 0 16 16"><rect x="1" y="7" width="14" height="2" rx="1" fill="currentColor"/><rect x="5" y="2" width="6" height="12" rx="1" fill="currentColor"/></svg></button>
+                <button class="align-btn" data-align="bottom" title="Align bottom" disabled><svg width="16" height="16" viewBox="0 0 16 16"><rect x="2" y="13" width="12" height="2" rx="1" fill="currentColor"/><rect x="5" y="5" width="6" height="7" rx="1" fill="currentColor"/></svg></button>
+                <div class="align-sep"></div>
+                <button class="align-btn align-delete" id="delete-selected" title="Remove element" disabled><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="4" x2="14" y2="4"/><path d="M6 4V3h4v1"/><path d="M3.5 4l.9 9h7.2l.9-9"/></svg></button>
+              </div>
             </div>
             <div class="canvas-wrapper">
               <canvas id="sign-canvas" width="480" height="680"></canvas>

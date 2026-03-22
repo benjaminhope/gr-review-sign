@@ -992,6 +992,83 @@ body {
 
 .social-field input::placeholder { color: var(--text-3); }
 
+/* ===== Element List (Visibility Toggles) ===== */
+.element-list { display: flex; flex-direction: column; gap: 2px; }
+
+.element-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--surface-3);
+}
+
+.element-row:last-child { border-bottom: none; }
+
+.element-name { font-size: 13px; color: var(--text-2); font-weight: 500; }
+
+.el-toggle {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.el-toggle:hover { border-color: var(--blue); color: var(--blue); }
+.el-toggle.el-off { color: var(--text-3); background: var(--surface-3); }
+
+/* ===== Alignment Toolbar ===== */
+.align-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  margin-bottom: 12px;
+}
+
+.align-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.align-btns { display: flex; align-items: center; gap: 2px; }
+
+.align-btn {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all .15s;
+  padding: 0;
+}
+
+.align-btn:hover:not(:disabled) { background: var(--surface-3); color: var(--text); border-color: var(--border); }
+.align-btn:disabled { opacity: .3; cursor: not-allowed; }
+.align-btn.align-delete { color: var(--red); }
+.align-btn.align-delete:hover:not(:disabled) { background: rgba(234,67,53,.08); border-color: rgba(234,67,53,.3); color: var(--red); }
+
+.align-sep { width: 1px; height: 18px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
+
 /* ===== Responsive ===== */
 @media (max-width: 900px) {
   .designer-layout {
