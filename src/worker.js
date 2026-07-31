@@ -1,40 +1,49 @@
 import Stripe from 'stripe';
 
+// AUD, GST-inclusive, one-time (runbook sa02/sa04). Amounts in cents.
+const TIERS = {
+  digital: {
+    amount: 1900,
+    name: 'Digital Download – Google Review QR Sign',
+    description: 'High-resolution PNG of your exact design, no watermark. Instant download.',
+  },
+  print: {
+    amount: 3900,
+    name: 'Print Pack – Google Review QR Sign',
+    description: '300 DPI files sized A5, A4 and 5×7″ plus the master PNG. Printer-ready.',
+  },
+  engraved: {
+    amount: 7900,
+    name: 'Engraved Acrylic Sign – Google Review QR',
+    description: 'Your design laser-engraved on ~150×100mm acrylic with stand. Ships from Brisbane in 5 business days, AU postage included. Digital files included.',
+    shipping: true,
+  },
+};
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // Inject Google API key into index.html
-    if (url.pathname === '/' || url.pathname === '/index.html') {
-      const response = await env.ASSETS.fetch(new URL('/index.html', url));
+    // Inject the Google API key into pages that use Places search
+    if (['/', '/index.html', '/design.html'].includes(url.pathname)) {
+      const path = url.pathname === '/' ? '/index.html' : url.pathname;
+      const response = await env.ASSETS.fetch(new URL(path, url));
       let html = await response.text();
       html = html.replace('{{GOOGLE_API_KEY}}', env.GOOGLE_PLACES_API_KEY || '');
       return new Response(html, {
-        headers: { 'content-type': 'text/html;charset=UTF-8' }
+        headers: { 'content-type': 'text/html;charset=UTF-8' },
       });
     }
 
     // POST /api/create-checkout-session
     if (url.pathname === '/api/create-checkout-session' && request.method === 'POST') {
-      const { tier, businessName, placeId } = await request.json();
+      let body;
+      try { body = await request.json(); } catch { return json({ error: 'Bad request' }, 400); }
+      const { tier, businessName, placeId } = body;
 
-      const tiers = {
-        digital: {
-          amount: 1499,
-          name: 'Digital Download – Google Review QR Sign',
-          description: 'High-resolution PNG file, instant download'
-        },
-        print: {
-          amount: 2999,
-          name: 'Print-Ready PDF – Google Review QR Sign',
-          description: '300 DPI PDF with bleed marks, ready for professional printing'
-        }
-      };
-
-      const product = tiers[tier];
-      if (!product) {
-        return json({ error: 'Invalid tier' }, 400);
-      }
+      const product = TIERS[tier];
+      if (!product) return json({ error: 'Invalid tier' }, 400);
+      if (!env.STRIPE_SECRET_KEY) return json({ error: 'Checkout not configured' }, 500);
 
       try {
         const stripe = new Stripe(env.STRIPE_SECRET_KEY);
@@ -44,16 +53,25 @@ export default {
           payment_method_types: ['card'],
           line_items: [{
             price_data: {
-              currency: 'usd',
+              currency: 'aud',
               product_data: { name: product.name, description: product.description },
-              unit_amount: product.amount
+              unit_amount: product.amount,
             },
-            quantity: 1
+            quantity: 1,
           }],
           mode: 'payment',
+          // Physical tier needs a postal address for fulfilment
+          ...(product.shipping ? {
+            shipping_address_collection: { allowed_countries: ['AU'] },
+            phone_number_collection: { enabled: true },
+          } : {}),
           success_url: `${baseUrl}/success.html?session_id={CHECKOUT_SESSION_ID}&tier=${tier}`,
           cancel_url: `${baseUrl}/cancel.html`,
-          metadata: { businessName, placeId, tier }
+          metadata: {
+            businessName: businessName || '',
+            placeId: placeId || '',
+            tier,
+          },
         });
 
         return json({ url: session.url });
@@ -66,6 +84,7 @@ export default {
     if (url.pathname === '/api/verify-session' && request.method === 'GET') {
       const id = url.searchParams.get('id');
       if (!id) return json({ error: 'Missing session id' }, 400);
+      if (!env.STRIPE_SECRET_KEY) return json({ error: 'Checkout not configured' }, 500);
 
       try {
         const stripe = new Stripe(env.STRIPE_SECRET_KEY);
@@ -73,21 +92,20 @@ export default {
         return json({
           paid: session.payment_status === 'paid',
           tier: session.metadata?.tier,
-          businessName: session.metadata?.businessName
+          businessName: session.metadata?.businessName,
         });
       } catch (err) {
         return json({ error: err.message }, 500);
       }
     }
 
-    // All other static assets
     return env.ASSETS.fetch(request);
-  }
+  },
 };
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { 'content-type': 'application/json' }
+    headers: { 'content-type': 'application/json' },
   });
 }

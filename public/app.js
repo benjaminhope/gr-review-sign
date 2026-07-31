@@ -1,656 +1,575 @@
-/* ===================================================
-   Google Review QR Sign Builder — Frontend Logic
-   =================================================== */
+/* ============================================================
+   ReviewSign — designer page logic
+   Requires vendor/qrcode.js + render-core.js loaded first.
+   ============================================================ */
 
-// ── Shape Configs ────────────────────────────────────
-const SHAPE_CONFIGS = {
-  portrait:  { W:480, H:680, label:'Portrait',       desc:'Counter sign · most common',      style:'centered', qrSize:190, maxW:400 },
-  landscape: { W:800, H:520, label:'Landscape',       desc:'Wide format · extra text space',  style:'split',    qrSize:195, maxW:455 },
-  rounded:   { W:760, H:500, label:'Rounded',         desc:'Premium feel · cafés & salons',   style:'split',    qrSize:190, maxW:445 },
-  arch:      { W:520, H:700, label:'Arch',            desc:'Boutique & hospitality',          style:'centered', qrSize:190, maxW:420 },
-  circle:    { W:560, H:560, label:'Circle',          desc:'Clean & minimal',                 style:'centered', qrSize:170, maxW:300 },
-  speech:    { W:800, H:600, label:'Speech Bubble',   desc:'Playful · reinforces "review"',   style:'split',    qrSize:190, maxW:450 },
-  star:      { W:600, H:600, label:'Star',            desc:'Tied to ratings & reviews',       style:'centered', qrSize:168, maxW:265 },
-  pin:       { W:480, H:700, label:'Location Pin',    desc:'Great for local services',        style:'centered', qrSize:178, maxW:380 },
-  house:     { W:540, H:700, label:'House',           desc:'Homey local businesses',          style:'centered', qrSize:170, maxW:400 },
-};
+const STORAGE_KEY = 'reviewsign.design.v2';
 
-const ACRYLIC_COLORS = [
-  { name:'White',      hex:'#FAFAFA' }, { name:'Silver',     hex:'#9E9E9E' },
-  { name:'Sky Blue',   hex:'#29B6F6' }, { name:'Royal Blue', hex:'#1565C0' },
-  { name:'Purple',     hex:'#7B2D8B' }, { name:'Hot Pink',   hex:'#E91E8C' },
-  { name:'Red',        hex:'#C62828' }, { name:'Amber',      hex:'#FF8F00' },
-  { name:'Yellow',     hex:'#FDD835' }, { name:'Lime',       hex:'#8BC34A' },
-  { name:'Green',      hex:'#2E7D32' }, { name:'Teal',       hex:'#00897B' },
-  { name:'Chocolate',  hex:'#5D4037' }, { name:'Black',      hex:'#212121' },
-];
+/* ── state ── */
+let design = loadDesign();
+let selected = null, dragging = null, dragOffset = {x:0,y:0};
+let bounds = {};
+let placeMeta = { placeId:null, address:null };
 
-function getDefaultLayout(shape) {
-  const cfg = SHAPE_CONFIGS[shape] || SHAPE_CONFIGS.landscape;
-  const { W, H, qrSize, style } = cfg;
+const canvas = document.getElementById('sign-canvas');
 
-  if (style === 'split') {
-    return {
-      qr:           { x:Math.round(W*0.665), y:Math.round((H-qrSize)/2 - H*0.05) },
-      businessName: { x:Math.round(W*0.055), y:Math.round(H*0.098) },
-      reviewLabel:  { x:Math.round(W*0.055), y:Math.round(H*0.34)  },
-      stars:        { x:Math.round(W*0.055), y:Math.round(H*0.40)  },
-      cta:          { x:Math.round(W*0.055), y:Math.round(H*0.48)  },
-      instruction:  { x:Math.round(W*0.055), y:Math.round(H*0.73)  },
-    };
-  }
-
-  // Centered layouts – x is the horizontal centre for text, left-edge for QR
-  const qx = Math.round((W - qrSize) / 2);
-  const specs = {
-    portrait: { qy:50,  bnY:278, rlY:388, stY:420, ctY:468, inY:574 },
-    arch:     { qy:32,  bnY:272, rlY:385, stY:417, ctY:466, inY:594 },
-    circle:   { qy:60,  bnY:263, rlY:365, stY:396, ctY:437, inY:490 },
-    star:     { qy:85,  bnY:294, rlY:386, stY:416, ctY:454, inY:500 },
-    pin:      { qy:30,  bnY:252, rlY:362, stY:393, ctY:436, inY:498 },
-    house:    { qy:275, bnY:255, rlY:482, stY:514, ctY:554, inY:625 },
-  };
-  const s = specs[shape] || specs.portrait;
-  return {
-    qr:           { x:qx,   y:s.qy  },
-    businessName: { x:W/2,  y:s.bnY },
-    reviewLabel:  { x:W/2,  y:s.rlY },
-    stars:        { x:W/2,  y:s.stY },
-    cta:          { x:W/2,  y:s.ctY },
-    instruction:  { x:W/2,  y:s.inY },
-  };
-}
-
-// ── State ────────────────────────────────────────────
-const state = {
-  placeId:null, businessName:null, businessAddress:null, reviewUrl:null,
-  shape:        'portrait',
-  material:     'acrylic',
-  acrylicColor: '#1565C0',
-  woodColor:    '#C8853A',
-  font:         'Montserrat',
-  ctaText:      'Leave Us a Google Review!',
-  qrColor:      '#000000',
-  instagram:    '',
-  facebook:     '',
-  socialPad:    40,
-  layout:       getDefaultLayout('portrait'),
-  bounds:       {},
-  dragging:null, dragOffset:{x:0,y:0}, selected:null,
-  qrDataUrl:null, renderCounter:0,
-  visible:{qr:true,businessName:true,reviewLabel:true,stars:true,cta:true,instruction:true},
-};
-
-let qrImgCache = null, controlsWired = false;
-
-// ── Helpers ──────────────────────────────────────────
-function isDark(hex) {
-  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
-  return (r*299+g*587+b*114)/1000 < 128;
-}
-function grainFromBg(hex) {
-  const r=parseInt(hex.slice(1,3)||'c8',16),g=parseInt(hex.slice(3,5)||'85',16),b=parseInt(hex.slice(5,7)||'3a',16);
-  const lum=(r*299+g*587+b*114)/1000, dark=lum<128;
-  const v1=dark?Math.min(255,lum+30):Math.max(0,lum-26);
-  const v2=dark?Math.min(255,lum+15):Math.max(0,lum-12);
-  const h=n=>Math.round(n).toString(16).padStart(2,'0');
-  return { grain1:`#${h(v1)}${h(v1)}${h(v1)}`, grain2:`#${h(v2)}${h(v2)}${h(v2)}` };
-}
-function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function countLines(ctx,text,maxW,maxLines){ const words=text.split(' ');let line='',c=1;for(const w of words){const t=line+w+' ';if(ctx.measureText(t).width>maxW&&line!==''){c++;if(c>=maxLines)return maxLines;line=w+' ';}else line=t;}return c; }
-function wrapText(ctx,text,x,y,maxW,lineH,maxLines=3){ const words=text.split(' ');let line='',drawn=0;for(const w of words){const t=line+w+' ';if(ctx.measureText(t).width>maxW&&line!==''){if(drawn>=maxLines-1){let tr=line.trim();while(ctx.measureText(tr+'…').width>maxW&&tr.length>0)tr=tr.slice(0,-1);ctx.fillText(tr+'…',x,y);return;}ctx.fillText(line.trim(),x,y);line=w+' ';y+=lineH;drawn++;}else line=t;}ctx.fillText(line.trim(),x,y); }
-
-// ── Shape Paths ──────────────────────────────────────
-function buildShapePath(ctx, W, H, shape) {
-  ctx.beginPath();
-  switch(shape) {
-    case 'portrait':
-    case 'landscape':
-      ctx.rect(0,0,W,H); break;
-    case 'rounded': {
-      const r=40;
-      ctx.moveTo(r,0);ctx.lineTo(W-r,0);ctx.quadraticCurveTo(W,0,W,r);
-      ctx.lineTo(W,H-r);ctx.quadraticCurveTo(W,H,W-r,H);
-      ctx.lineTo(r,H);ctx.quadraticCurveTo(0,H,0,H-r);
-      ctx.lineTo(0,r);ctx.quadraticCurveTo(0,0,r,0); break;
+function loadDesign(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw){
+      const saved = JSON.parse(raw);
+      const d = Object.assign(defaultDesign(), saved);
+      d.visible = Object.assign(defaultDesign().visible, saved.visible||{});
+      if (!SHAPE_CONFIGS[d.shape]){ d.shape='portrait'; d.layout=getDefaultLayout('portrait'); }
+      return d;
     }
-    case 'arch': {
-      const r=W/2;
-      ctx.moveTo(0,H);ctx.lineTo(0,r);
-      ctx.arc(W/2,r,r,Math.PI,0,false);
-      ctx.lineTo(W,H); break;
-    }
-    case 'circle': {
-      const r=Math.min(W,H)/2;
-      ctx.ellipse(W/2,H/2,r,r,0,0,Math.PI*2); break;
-    }
-    case 'speech': {
-      const r=40,tailH=80,tailX=W*0.28,tailW=64,bodyH=H-tailH;
-      ctx.moveTo(r,0);ctx.lineTo(W-r,0);ctx.quadraticCurveTo(W,0,W,r);
-      ctx.lineTo(W,bodyH-r);ctx.quadraticCurveTo(W,bodyH,W-r,bodyH);
-      ctx.lineTo(tailX+tailW,bodyH);ctx.lineTo(tailX+tailW/2,H);ctx.lineTo(tailX,bodyH);
-      ctx.lineTo(r,bodyH);ctx.quadraticCurveTo(0,bodyH,0,bodyH-r);
-      ctx.lineTo(0,r);ctx.quadraticCurveTo(0,0,r,0); break;
-    }
-    case 'star': {
-      const cx=W/2,cy=H/2,oR=Math.min(W,H)*0.47,iR=oR*0.42;
-      for(let i=0;i<10;i++){
-        const a=(Math.PI/5)*i-Math.PI/2, r=i%2===0?oR:iR;
-        i===0?ctx.moveTo(cx+r*Math.cos(a),cy+r*Math.sin(a)):ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));
-      } break;
-    }
-    case 'pin': {
-      const cx=W/2,r=W*0.45,cy=r;
-      const tA=Math.asin(Math.min(0.999,r/(H-cy)));
-      const sA=Math.PI/2+tA, eA=Math.PI/2-tA;
-      ctx.moveTo(cx+r*Math.cos(sA),cy+r*Math.sin(sA));
-      ctx.arc(cx,cy,r,sA,eA,false);
-      ctx.lineTo(cx,H); break;
-    }
-    case 'house': {
-      const rH=H*0.35;
-      ctx.moveTo(0,rH);ctx.lineTo(W/2,0);ctx.lineTo(W,rH);
-      ctx.lineTo(W,H);ctx.lineTo(0,H); break;
-    }
-    default: ctx.rect(0,0,W,H);
-  }
-  ctx.closePath();
+  } catch(e){}
+  const d = defaultDesign();
+  d.layout = getDefaultLayout(d.shape);
+  return d;
+}
+let saveTimer;
+function persist(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(()=>{
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(design)); } catch(e){}
+  }, 250);
 }
 
-// ── Flat Wood ────────────────────────────────────────
-function drawFlatWood(ctx, W, H, woodColor) {
-  ctx.fillStyle=woodColor; ctx.fillRect(0,0,W,H);
-  const {grain1,grain2}=grainFromBg(woodColor);
-  for(let i=0;i<44;i++){
-    const y0=(H/44)*i,color=(i%3===0)?grain2:grain1,alpha=0.06+(i%5)*0.02,f1=0.006+(i%7)*0.001,amp=1.5+(i%4)*0.5;
-    ctx.save();ctx.globalAlpha=alpha;ctx.strokeStyle=color;ctx.lineWidth=0.6;
-    ctx.beginPath();ctx.moveTo(0,y0);
-    for(let x=0;x<=W;x+=4)ctx.lineTo(x,y0+Math.sin(x*f1+i*1.31)*amp);
-    ctx.stroke();ctx.restore();
-  }
+/* ── render loop ── */
+function paint(){
+  bounds = renderSign(canvas, design, { scale: 3, selection: selected });
+  updateScanPill();
+  updateStatus();
+  persist();
 }
 
-// ── Social Media Icons (official SVG paths) ──────────
-function drawIGIcon(ctx, x, y, sz, color) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(sz / 511.9, sz / 511.9);
-  ctx.fillStyle = color;
-  [
-    'm510.949219 150.5c-1.199219-27.199219-5.597657-45.898438-11.898438-62.101562-6.5-17.199219-16.5-32.597657-29.601562-45.398438-12.800781-13-28.300781-23.101562-45.300781-29.5-16.296876-6.300781-34.898438-10.699219-62.097657-11.898438-27.402343-1.300781-36.101562-1.601562-105.601562-1.601562s-78.199219.300781-105.5 1.5c-27.199219 1.199219-45.898438 5.601562-62.097657 11.898438-17.203124 6.5-32.601562 16.5-45.402343 29.601562-13 12.800781-23.097657 28.300781-29.5 45.300781-6.300781 16.300781-10.699219 34.898438-11.898438 62.097657-1.300781 27.402343-1.601562 36.101562-1.601562 105.601562s.300781 78.199219 1.5 105.5c1.199219 27.199219 5.601562 45.898438 11.902343 62.101562 6.5 17.199219 16.597657 32.597657 29.597657 45.398438 12.800781 13 28.300781 23.101562 45.300781 29.5 16.300781 6.300781 34.898438 10.699219 62.101562 11.898438 27.296876 1.203124 36 1.5 105.5 1.5s78.199219-.296876 105.5-1.5c27.199219-1.199219 45.898438-5.597657 62.097657-11.898438 34.402343-13.300781 61.601562-40.5 74.902343-74.898438 6.296876-16.300781 10.699219-34.902343 11.898438-62.101562 1.199219-27.300781 1.5-36 1.5-105.5s-.101562-78.199219-1.300781-105.5zm-46.097657 209c-1.101562 25-5.300781 38.5-8.800781 47.5-8.601562 22.300781-26.300781 40-48.601562 48.601562-9 3.5-22.597657 7.699219-47.5 8.796876-27 1.203124-35.097657 1.5-103.398438 1.5s-76.5-.296876-103.402343-1.5c-25-1.097657-38.5-5.296876-47.5-8.796876-11.097657-4.101562-21.199219-10.601562-29.398438-19.101562-8.5-8.300781-15-18.300781-19.101562-29.398438-3.5-9-7.699219-22.601562-8.796876-47.5-1.203124-27-1.5-35.101562-1.5-103.402343s.296876-76.5 1.5-103.398438c1.097657-25 5.296876-38.5 8.796876-47.5 4.101562-11.101562 10.601562-21.199219 19.203124-29.402343 8.296876-8.5 18.296876-15 29.398438-19.097657 9-3.5 22.601562-7.699219 47.5-8.800781 27-1.199219 35.101562-1.5 103.398438-1.5 68.402343 0 76.5.300781 103.402343 1.5 25 1.101562 38.5 5.300781 47.5 8.800781 11.097657 4.097657 21.199219 10.597657 29.398438 19.097657 8.5 8.300781 15 18.300781 19.101562 29.402343 3.5 9 7.699219 22.597657 8.800781 47.5 1.199219 27 1.5 35.097657 1.5 103.398438s-.300781 76.300781-1.5 103.300781zm0 0',
-    'm256.449219 124.5c-72.597657 0-131.5 58.898438-131.5 131.5s58.902343 131.5 131.5 131.5c72.601562 0 131.5-58.898438 131.5-131.5s-58.898438-131.5-131.5-131.5zm0 216.800781c-47.097657 0-85.300781-38.199219-85.300781-85.300781s38.203124-85.300781 85.300781-85.300781c47.101562 0 85.300781 38.199219 85.300781 85.300781s-38.199219 85.300781-85.300781 85.300781zm0 0',
-    'm423.851562 119.300781c0 16.953125-13.746093 30.699219-30.703124 30.699219-16.953126 0-30.699219-13.746094-30.699219-30.699219 0-16.957031 13.746093-30.699219 30.699219-30.699219 16.957031 0 30.703124 13.742188 30.703124 30.699219zm0 0',
-  ].forEach(d => ctx.fill(new Path2D(d)));
-  ctx.restore();
+function updateScanPill(){
+  const pill = document.getElementById('scan-pill');
+  const res = qrScanCheck(design);
+  pill.className = 'scan-pill ' + res.level;
+  document.getElementById('scan-msg').textContent = res.msg;
 }
 
-function drawFBIcon(ctx, x, y, sz, color) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(sz / 512, sz / 512);
-  ctx.fillStyle = color;
-  ctx.fill(new Path2D('M452,0H60C26.916,0,0,26.916,0,60v392c0,33.084,26.916,60,60,60h392c33.084,0,60-26.916,60-60V60C512,26.916,485.084,0,452,0z M472,452c0,11.028-8.972,20-20,20H338V309h61.79L410,247h-72v-43c0-16.975,13.025-30,30-30h41v-62h-41c-50.923,0-91.978,41.25-91.978,92.174V247H216v62h60.022v163H60c-11.028,0-20-8.972-20-20V60c0-11.028,8.972-20,20-20h392c11.028,0,20,8.972,20,20V452z'));
-  ctx.restore();
+function updateStatus(){
+  const el = document.getElementById('topbar-status');
+  el.textContent = design.businessName
+    ? `${design.businessName} — ${SHAPE_CONFIGS[design.shape].label}`
+    : 'Untitled sign — pick your business to activate the QR';
 }
 
-// ── Canvas Renderer ──────────────────────────────────
-const RENDER_SCALE = 3;
-const signCanvas = document.getElementById('sign-canvas');
-const ctx = signCanvas.getContext('2d');
-
-function drawSign(qrImg) {
-  const cfg = SHAPE_CONFIGS[state.shape] || SHAPE_CONFIGS.landscape;
-  const W = cfg.W, H = cfg.H; // logical units — canvas pixels are W*RENDER_SCALE × H*RENDER_SCALE
-  const bg        = state.material==='acrylic' ? state.acrylicColor : state.woodColor;
-  const textColor = isDark(bg) ? '#FFFFFF' : '#0A0A0A';
-  const dimColor  = isDark(bg) ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.50)';
-  const isCentered = cfg.style === 'centered';
-  const QR_SIZE   = cfg.qrSize;
-  const MAX_TEXT_W = cfg.maxW;
-  const QR_PAD    = 10;
-  const lay       = state.layout;
-
-  ctx.clearRect(0,0,signCanvas.width,signCanvas.height);
-
-  // Background + border
-  ctx.save();
-  ctx.scale(RENDER_SCALE, RENDER_SCALE);
-  buildShapePath(ctx,W,H,state.shape);
-  ctx.clip();
-  if(state.material==='wood') drawFlatWood(ctx,W,H,state.woodColor);
-  else { ctx.fillStyle=bg; ctx.fillRect(0,0,W,H); }
-  ctx.strokeStyle=isDark(bg)?'rgba(255,255,255,0.20)':'rgba(0,0,0,0.16)';
-  ctx.lineWidth=5;
-  buildShapePath(ctx,W,H,state.shape);
-  ctx.stroke();
-
-  state.bounds = {};
-
-  const setTextStyle = (font, fillStyle, align, baseline) => {
-    ctx.font=font; ctx.fillStyle=fillStyle;
-    ctx.textAlign=align||(isCentered?'center':'left');
-    ctx.textBaseline=baseline||'top';
-  };
-
-  // QR Code
-  if(state.visible.qr) {
-    const {x,y}=lay.qr;
-    // No white box for either material — QR floats on the background
-    if(qrImg) ctx.drawImage(qrImg,x,y,QR_SIZE,QR_SIZE);
-    else { ctx.fillStyle='rgba(255,255,255,0.15)';ctx.fillRect(x,y,QR_SIZE,QR_SIZE); }
-    ctx.fillStyle=dimColor;ctx.font='600 11px Inter';
-    ctx.textAlign='center';ctx.textBaseline='top';
-    ctx.fillText('▲ SCAN TO REVIEW ▲',x+QR_SIZE/2,y+QR_SIZE+QR_PAD+4);
-    state.bounds.qr={x:x-QR_PAD,y:y-QR_PAD,w:QR_SIZE+QR_PAD*2,h:QR_SIZE+QR_PAD*2+22};
-  }
-
-  // Business Name
-  if(state.visible.businessName) {
-    const {x,y}=lay.businessName;
-    const name=state.businessName||'Your Business Name';
-    setTextStyle(`bold 36px '${state.font}'`,textColor);
-    const nl=countLines(ctx,name,MAX_TEXT_W,2);
-    wrapText(ctx,name,x,y,MAX_TEXT_W,46,2);
-    state.bounds.businessName={x:isCentered?x-MAX_TEXT_W/2:x,y,w:MAX_TEXT_W,h:nl*46};
-  }
-
-  // Google Reviews label
-  if(state.visible.reviewLabel) {
-    const {x,y}=lay.reviewLabel;
-    setTextStyle('700 13px Inter',textColor,isCentered?'center':'left');
-    ctx.textBaseline='top';
-    ctx.fillText('Google Reviews',x,y+4);
-    state.bounds.reviewLabel={x:isCentered?x-110:x,y,w:isCentered?220:180,h:22};
-  }
-
-  // Stars
-  if(state.visible.stars) {
-    const {x,y}=lay.stars;
-    setTextStyle('24px Arial',textColor,isCentered?'center':'left');
-    ctx.textBaseline='top';
-    ctx.fillText('★★★★★',x,y);
-    state.bounds.stars={x:isCentered?x-66:x,y,w:132,h:28};
-  }
-
-  // CTA
-  if(state.visible.cta) {
-    const {x,y}=lay.cta;
-    setTextStyle(`bold 24px '${state.font}'`,textColor);
-    const nl=countLines(ctx,state.ctaText,MAX_TEXT_W,3);
-    wrapText(ctx,state.ctaText,x,y,MAX_TEXT_W,32,3);
-    state.bounds.cta={x:isCentered?x-MAX_TEXT_W/2:x,y,w:MAX_TEXT_W,h:nl*32};
-  }
-
-  // Instruction
-  if(state.visible.instruction) {
-    const {x,y}=lay.instruction;
-    setTextStyle('400 12px Inter',dimColor);
-    ctx.textBaseline='top';
-    wrapText(ctx,'Point your phone camera at the QR code',x,y,MAX_TEXT_W,17,2);
-    state.bounds.instruction={x:isCentered?x-MAX_TEXT_W/2:x,y,w:MAX_TEXT_W,h:34};
-  }
-
-  // Social Media
-  const iconSz = 17;
-  const socialPadExtra = state.shape==='speech' ? 50 : 0;
-  const socialY = H - state.socialPad - socialPadExtra;
-  if(state.instagram || state.facebook) {
-    ctx.font='500 12px Inter'; ctx.textBaseline='middle'; ctx.fillStyle=dimColor;
-    if(isCentered) {
-      let parts=[];
-      if(state.instagram) parts.push({type:'ig',text:'@'+state.instagram});
-      if(state.facebook)  parts.push({type:'fb',text:state.facebook});
-      let totalW=0;
-      parts.forEach(p=>{totalW+=iconSz+4+ctx.measureText(p.text).width+(parts.length>1?24:0);});
-      let sx=W/2-totalW/2;
-      parts.forEach(p=>{
-        if(p.type==='ig') drawIGIcon(ctx,sx,socialY-iconSz/2,iconSz,dimColor);
-        else drawFBIcon(ctx,sx,socialY-iconSz/2,iconSz,dimColor);
-        ctx.fillText(p.text,sx+iconSz+4,socialY);
-        sx+=iconSz+4+ctx.measureText(p.text).width+24;
-      });
-    } else {
-      let sx=Math.round(W*0.055);
-      if(state.instagram){drawIGIcon(ctx,sx,socialY-iconSz/2,iconSz,dimColor);ctx.fillText('@'+state.instagram,sx+iconSz+4,socialY);sx+=iconSz+4+ctx.measureText('@'+state.instagram).width+20;}
-      if(state.facebook) {drawFBIcon(ctx,sx,socialY-iconSz/2,iconSz,dimColor);ctx.fillText(state.facebook,sx+iconSz+4,socialY);}
-    }
-  }
-
-  ctx.restore();
-
-  // Selection / drag indicator
-  const _sel=state.dragging||state.selected;
-  if(_sel && state.bounds[_sel]) {
-    const b=state.bounds[_sel];
-    ctx.save();ctx.scale(RENDER_SCALE,RENDER_SCALE);
-    ctx.strokeStyle='#1a73e8';ctx.lineWidth=2;ctx.setLineDash([6,4]);
-    ctx.strokeRect(b.x-5,b.y-5,b.w+10,b.h+10);ctx.setLineDash([]);ctx.restore();
-  }
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t = setTimeout(()=>t.classList.remove('show'), 2600);
 }
 
-function renderSync() { drawSign(qrImgCache); }
+/* ══════════════ CONTROL WIRING ══════════════ */
 
-async function renderCanvas() {
-  const rid=++state.renderCounter;
-  document.getElementById('canvas-loading').classList.remove('hidden');
-  try{await document.fonts.load(`bold 32px '${state.font}'`);}catch{}
-  if(rid!==state.renderCounter)return;
-  if(state.reviewUrl && !state.qrDataUrl){
-    const isAcrylic = state.material==='acrylic';
-    const qrDark  = isAcrylic ? '#FFFFFF' : state.qrColor;
-    const qrLight = isAcrylic ? state.acrylicColor : '#ffffff';
-    const burn    = !isAcrylic; // wood burn effect: transparent bg, 90% opaque dark
-    state.qrDataUrl=await generateQRDataUrl(state.reviewUrl, qrDark, qrLight, burn);
-    qrImgCache=null;
-  }
-  if(state.qrDataUrl && !qrImgCache){
-    qrImgCache=new Image();qrImgCache.src=state.qrDataUrl;
-    await new Promise(r=>{qrImgCache.onload=r;qrImgCache.onerror=r;});
-  }
-  if(rid!==state.renderCounter)return;
-  renderSync();
-  document.getElementById('canvas-loading').classList.add('hidden');
-}
-
-// ── QR Generation ────────────────────────────────────
-async function generateQRDataUrl(url, color, colorLight='#ffffff', burnEffect=false) {
-  return new Promise(resolve=>{
-    const div=document.getElementById('qr-offscreen');
-    div.innerHTML='';
-    new QRCode(div,{text:url,width:768,height:768,colorDark:color,colorLight:colorLight,correctLevel:QRCode.CorrectLevel.H});
-    setTimeout(async()=>{
-      try{
-        const c=await html2canvas(div,{scale:1,backgroundColor:null,logging:false});
-        if(burnEffect){
-          const ictx=c.getContext('2d');
-          const imgData=ictx.getImageData(0,0,c.width,c.height);
-          const d=imgData.data;
-          for(let i=0;i<d.length;i+=4){
-            if((d[i]+d[i+1]+d[i+2])/3 > 128){
-              d[i+3]=0; // light module → fully transparent
-            } else {
-              d[i]=0;d[i+1]=0;d[i+2]=0;d[i+3]=230; // dark module → 90% opaque black
-            }
-          }
-          ictx.putImageData(imgData,0,0);
-        }
-        resolve(c.toDataURL('image/png'));
-      }
-      catch{const qc=div.querySelector('canvas');resolve(qc?qc.toDataURL('image/png'):null);}
-    },100);
+/* templates strip */
+const tplStrip = document.getElementById('tpl-strip');
+TEMPLATES.forEach(tpl=>{
+  const b = document.createElement('button');
+  b.className = 'tpl-chip' + (design.template===tpl.id?' active':'');
+  b.dataset.tpl = tpl.id;
+  b.innerHTML = `<div class="tc-wrap"><canvas></canvas></div><div class="tc-name">${tpl.name}</div>`;
+  b.addEventListener('click', ()=>{
+    design = applyTemplate(design, tpl.id);
+    document.querySelectorAll('.tpl-chip').forEach(c=>c.classList.toggle('active', c===b));
+    syncControlsFromDesign();
+    paint();
   });
-}
-
-// ── Google Places ────────────────────────────────────
-let autocompleteService=null,placesService=null,searchDebounce=null;
-
-window.initPlacesAPI=function(){
-  autocompleteService=new google.maps.places.AutocompleteService();
-  placesService=new google.maps.places.PlacesService(document.getElementById('places-attribution'));
-};
-
-const searchInput=document.getElementById('business-search');
-searchInput.addEventListener('input',()=>{
-  clearTimeout(searchDebounce);
-  const q=searchInput.value.trim();
-  document.getElementById('places-results').innerHTML='';
-  if(q.length<2)return;
-  document.getElementById('search-spinner').classList.remove('hidden');
-  searchDebounce=setTimeout(()=>fetchPredictions(q),350);
+  tplStrip.appendChild(b);
+  const td = applyTemplate(defaultDesign(), tpl.id);
+  td.businessName = tpl.name; td.reviewUrl = 'https://example.com/demo';
+  renderSign(b.querySelector('canvas'), td, { scale: 0.5 });
 });
 
+/* shapes */
+const SHAPE_ICONS = {
+  portrait:'<rect x="8" y="3" width="18" height="28" rx="2"/>', landscape:'<rect x="3" y="8" width="28" height="18" rx="2"/>',
+  rounded:'<rect x="3" y="8" width="28" height="18" rx="7"/>', arch:'<path d="M7,31 L7,15 A10,10 0,0,1 27,15 L27,31 Z"/>',
+  circle:'<circle cx="17" cy="17" r="13"/>', speech:'<path d="M7,5 L27,5 Q31,5 31,9 L31,20 Q31,24 27,24 L17,24 L13,30 L11,24 L7,24 Q3,24 3,20 L3,9 Q3,5 7,5 Z"/>',
+  pin:'<path d="M17,31 C10,22 6,17 6,11.5 A11,11 0,0,1 28,11.5 C28,17 24,22 17,31 Z"/>',
+  house:'<polygon points="3,15 17,3 31,15 31,31 3,31"/>',
+};
+const shapeGrid = document.getElementById('shape-grid');
+Object.entries(SHAPE_CONFIGS).forEach(([key,cfg])=>{
+  const b = document.createElement('button');
+  b.className = 'shape-cell' + (design.shape===key?' active':'');
+  b.dataset.shape = key;
+  b.innerHTML = `<svg viewBox="0 0 34 34" fill="currentColor" fill-opacity="0.12" stroke="currentColor" stroke-width="1.8">${SHAPE_ICONS[key]}</svg><span>${cfg.label}</span>`;
+  b.addEventListener('click', ()=>{
+    design.shape = key;
+    design.layout = getDefaultLayout(key);
+    document.querySelectorAll('.shape-cell').forEach(c=>c.classList.toggle('active', c===b));
+    selected=null; updateToolbar();
+    paint();
+  });
+  shapeGrid.appendChild(b);
+});
+
+/* background type */
+document.querySelectorAll('#bg-type-row .seg-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    design.bgType = b.dataset.bgtype;
+    document.querySelectorAll('#bg-type-row .seg-btn').forEach(x=>x.classList.toggle('active', x===b));
+    if (design.bgType==='chalk' && design.bgColor==='#FFFFFF') design.bgColor='#2B2B28';
+    if (design.bgType==='wood'  && (design.bgColor==='#FFFFFF'||design.bgColor==='#2B2B28')) design.bgColor='#C8853A';
+    syncBgRows();
+    paint();
+  });
+});
+function syncBgRows(){
+  const grad = design.bgType==='gradient';
+  document.getElementById('bg2-row').style.display = grad?'':'none';
+  document.getElementById('angle-row').style.display = grad?'':'none';
+}
+
+/* palette swatches */
+const PALETTE = [
+  '#FFFFFF','#F5F1E8','#FBE6E3','#DFF5EC','#CDE6F7','#FDF3D0','#EFE6F7',
+  '#141414','#2B2B28','#1B2240','#0E5C45','#1565C0','#7B2D8B','#8C1D18',
+  '#E8630A','#FFC821','#C8853A','#D4AF37','#E91E8C','#00897B','#5D4037',
+];
+const bgSwatches = document.getElementById('bg-swatches');
+PALETTE.forEach(hex=>{
+  const s = document.createElement('button');
+  s.className = 'swatch'; s.style.background = hex; s.title = hex;
+  s.addEventListener('click', ()=>{
+    design.bgColor = hex;
+    document.getElementById('bg-color').value = hex;
+    document.querySelectorAll('#bg-swatches .swatch').forEach(x=>x.classList.toggle('selected', x===s));
+    paint();
+  });
+  bgSwatches.appendChild(s);
+});
+
+document.getElementById('bg-color').addEventListener('input', e=>{ design.bgColor=e.target.value; paint(); });
+document.getElementById('bg-color2').addEventListener('input', e=>{ design.bgColor2=e.target.value; paint(); });
+document.getElementById('bg-angle').addEventListener('input', e=>{
+  design.bgAngle=+e.target.value;
+  document.getElementById('bg-angle-out').textContent=e.target.value+'°';
+  paint();
+});
+
+/* text colour */
+document.getElementById('text-auto-btn').addEventListener('click', function(){
+  design.textColor='auto';
+  this.classList.add('active');
+  document.getElementById('text-custom-btn').classList.remove('active');
+  document.getElementById('text-color-row').style.display='none';
+  paint();
+});
+document.getElementById('text-custom-btn').addEventListener('click', function(){
+  design.textColor=document.getElementById('text-color').value;
+  this.classList.add('active');
+  document.getElementById('text-auto-btn').classList.remove('active');
+  document.getElementById('text-color-row').style.display='';
+  paint();
+});
+document.getElementById('text-color').addEventListener('input', e=>{ design.textColor=e.target.value; paint(); });
+document.getElementById('star-color').addEventListener('input', e=>{ design.starColor=e.target.value; paint(); });
+
+/* QR style */
+document.querySelectorAll('#qr-style-row .seg-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    design.qrStyle=b.dataset.qrstyle;
+    document.querySelectorAll('#qr-style-row .seg-btn').forEach(x=>x.classList.toggle('active', x===b));
+    paint();
+  });
+});
+document.querySelectorAll('#qr-eye-row .seg-btn').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    design.qrEyeStyle=b.dataset.qreye;
+    document.querySelectorAll('#qr-eye-row .seg-btn').forEach(x=>x.classList.toggle('active', x===b));
+    paint();
+  });
+});
+document.getElementById('qr-color').addEventListener('input', e=>{ design.qrColor=e.target.value; paint(); });
+document.getElementById('qr-panel-toggle').addEventListener('click', function(){
+  design.qrPanel=!design.qrPanel;
+  this.textContent=design.qrPanel?'On':'Off';
+  this.classList.toggle('el-off', !design.qrPanel);
+  document.getElementById('qr-panel-color-row').style.display=design.qrPanel?'':'none';
+  paint();
+});
+document.getElementById('qr-panel-color').addEventListener('input', e=>{ design.qrPanelColor=e.target.value; paint(); });
+document.getElementById('qr-scale').addEventListener('input', e=>{
+  design.qrScale=+e.target.value;
+  document.getElementById('qr-scale-out').textContent=Math.round(design.qrScale*100)+'%';
+  paint();
+});
+
+/* wording & fonts */
+document.querySelectorAll('#cta-presets .chip').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    design.ctaText=b.dataset.cta;
+    document.querySelectorAll('#cta-presets .chip').forEach(x=>x.classList.toggle('active', x===b));
+    document.getElementById('cta-custom').value='';
+    paint();
+  });
+});
+document.getElementById('cta-custom').addEventListener('input', e=>{
+  const v=e.target.value.trim();
+  if (v){ design.ctaText=v; document.querySelectorAll('#cta-presets .chip').forEach(x=>x.classList.remove('active')); }
+  paint();
+});
+document.getElementById('in-instruction').addEventListener('input', e=>{
+  design.instructionText=e.target.value.trim()||'Point your phone camera at the code';
+  paint();
+});
+
+const headingSel = document.getElementById('font-heading');
+const bodySel = document.getElementById('font-body');
+SIGN_FONTS.forEach(f=>{
+  headingSel.add(new Option(f,f));
+  bodySel.add(new Option(f,f));
+});
+headingSel.addEventListener('change', async e=>{
+  design.headingFont=e.target.value;
+  try{ await document.fonts.load(`bold 36px '${design.headingFont}'`); }catch(x){}
+  paint();
+});
+bodySel.addEventListener('change', async e=>{
+  design.bodyFont=e.target.value;
+  try{ await document.fonts.load(`400 14px '${design.bodyFont}'`); }catch(x){}
+  paint();
+});
+
+/* business name + socials */
+document.getElementById('in-bizname').addEventListener('input', e=>{ design.businessName=e.target.value; paint(); });
+document.getElementById('in-instagram').addEventListener('input', e=>{ design.instagram=e.target.value.replace(/^@/,'').trim(); paint(); });
+document.getElementById('in-facebook').addEventListener('input', e=>{ design.facebook=e.target.value.trim(); paint(); });
+document.getElementById('social-pad').addEventListener('input', e=>{
+  design.socialPad=+e.target.value;
+  document.getElementById('social-pad-out').textContent=e.target.value;
+  paint();
+});
+
+/* element toggles */
+document.querySelectorAll('#element-toggles .el-toggle').forEach(b=>{
+  b.addEventListener('click', ()=>{
+    const key=b.dataset.el;
+    design.visible[key]=!design.visible[key];
+    b.textContent=design.visible[key]?'Hide':'Show';
+    b.classList.toggle('el-off', !design.visible[key]);
+    if (!design.visible[key] && selected===key){ selected=null; updateToolbar(); }
+    paint();
+  });
+});
+document.getElementById('reset-layout').addEventListener('click', ()=>{
+  design.layout=getDefaultLayout(design.shape);
+  paint();
+  toast('Layout reset');
+});
+
+/* ── manual link + Google Places ── */
+document.getElementById('manual-link-toggle').addEventListener('click', e=>{
+  e.preventDefault();
+  const row=document.getElementById('manual-link-row');
+  row.style.display=row.style.display==='none'?'':'none';
+  if (row.style.display!=='none') document.getElementById('manual-url').focus();
+});
+document.getElementById('manual-url').addEventListener('input', e=>{
+  const v=e.target.value.trim();
+  if (v.length>8 && /^https?:\/\//i.test(v)){
+    design.reviewUrl=v;
+    placeMeta={placeId:null,address:null};
+    showSelectedBiz(design.businessName||'Custom link', v);
+    paint();
+  }
+});
+
+let autocompleteService=null, placesService=null, searchDebounce=null;
+window.initPlacesAPI=function(){
+  try{
+    autocompleteService=new google.maps.places.AutocompleteService();
+    placesService=new google.maps.places.PlacesService(document.getElementById('places-attribution'));
+  }catch(e){}
+};
+
+const bizSearch=document.getElementById('biz-search');
+const bizResults=document.getElementById('biz-results');
+bizSearch.addEventListener('input', ()=>{
+  clearTimeout(searchDebounce);
+  const q=bizSearch.value.trim();
+  bizResults.innerHTML='';
+  if (q.length<2) return;
+  searchDebounce=setTimeout(()=>fetchPredictions(q), 320);
+});
+
+function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 function fetchPredictions(query){
-  if(!autocompleteService){document.getElementById('search-spinner').classList.add('hidden');showSearchError('Google Maps loading…');return;}
-  autocompleteService.getPlacePredictions({input:query,types:['establishment']},(predictions,status)=>{
-    document.getElementById('search-spinner').classList.add('hidden');
-    const c=document.getElementById('places-results');
-    if(status!==google.maps.places.PlacesServiceStatus.OK||!predictions?.length){c.innerHTML='<div class="prediction-item"><span>No results found.</span></div>';return;}
-    c.innerHTML='';
-    predictions.slice(0,6).forEach(p=>{
-      const d=document.createElement('div');d.className='prediction-item';d.setAttribute('role','option');
+  if (!autocompleteService){
+    bizResults.innerHTML='<div class="biz-item"><span>Business search unavailable — paste your review link below instead.</span></div>';
+    document.getElementById('manual-link-row').style.display='';
+    return;
+  }
+  autocompleteService.getPlacePredictions({input:query,types:['establishment']},(preds,status)=>{
+    if (status!==google.maps.places.PlacesServiceStatus.OK || !preds?.length){
+      bizResults.innerHTML='<div class="biz-item"><span>No results — try the link option below.</span></div>';
+      return;
+    }
+    bizResults.innerHTML='';
+    preds.slice(0,6).forEach(p=>{
+      const d=document.createElement('div');
+      d.className='biz-item';
       d.innerHTML=`<strong>${escHtml(p.structured_formatting.main_text)}</strong><span>${escHtml(p.structured_formatting.secondary_text||'')}</span>`;
       d.addEventListener('click',()=>selectPlace(p.place_id));
-      c.appendChild(d);
+      bizResults.appendChild(d);
     });
   });
 }
 
 function selectPlace(placeId){
-  document.getElementById('places-results').innerHTML='';
-  document.getElementById('search-spinner').classList.remove('hidden');
+  bizResults.innerHTML='';
   placesService.getDetails({placeId,fields:['name','place_id','formatted_address']},(place,status)=>{
-    document.getElementById('search-spinner').classList.add('hidden');
-    if(status!==google.maps.places.PlacesServiceStatus.OK){showSearchError('Could not load details. Please try again.');return;}
-    state.placeId=place.place_id;state.businessName=place.name;
-    state.businessAddress=place.formatted_address||'';
-    state.reviewUrl=`https://search.google.com/local/writereview?placeid=${place.place_id}`;
-    state.qrDataUrl=null;qrImgCache=null;
-    searchInput.value=place.name;
-    showSelectedBusiness(place);
-    document.getElementById('to-step-3').disabled=false;
+    if (status!==google.maps.places.PlacesServiceStatus.OK){ toast('Could not load that business — try again'); return; }
+    placeMeta={placeId:place.place_id,address:place.formatted_address||''};
+    design.businessName=place.name;
+    design.reviewUrl=`https://search.google.com/local/writereview?placeid=${place.place_id}`;
+    document.getElementById('in-bizname').value=place.name;
+    bizSearch.value=place.name;
+    showSelectedBiz(place.name, design.reviewUrl);
+    paint();
   });
 }
 
-function showSelectedBusiness(place){
-  document.getElementById('selected-name').textContent=place.name;
-  document.getElementById('selected-address').textContent=place.formatted_address||'';
-  const u=document.getElementById('selected-url');u.textContent=state.reviewUrl;u.href=state.reviewUrl;
-  document.getElementById('selected-business').classList.remove('hidden');
+function showSelectedBiz(name, url){
+  document.getElementById('biz-selected').style.display='';
+  document.getElementById('biz-sel-name').textContent=name;
+  document.getElementById('biz-sel-url').textContent=url;
 }
 
-document.getElementById('change-business').addEventListener('click',()=>{
-  document.getElementById('selected-business').classList.add('hidden');
-  document.getElementById('to-step-3').disabled=true;
-  state.placeId=state.businessName=state.reviewUrl=state.qrDataUrl=null;
-  qrImgCache=null;searchInput.value='';searchInput.focus();
-});
-
-function showSearchError(msg){
-  document.getElementById('places-results').innerHTML=`<div class="prediction-item" style="color:#ea4335"><span>${msg}</span></div>`;
-}
-
-// ── Step Navigation ──────────────────────────────────
-function goToStep(n){
-  document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById(`step-${n}`).classList.add('active');
-  for(let i=1;i<=4;i++){
-    const el=document.getElementById(`nav-step-${i}`);
-    if(!el)continue;
-    el.classList.remove('active','completed');
-    if(i===n)el.classList.add('active');
-    else if(i<n)el.classList.add('completed');
-  }
-  window.scrollTo({top:0,behavior:'smooth'});
-  if(n===3) initDesigner();
-}
-
-document.getElementById('shape-to-step-2').addEventListener('click',()=>goToStep(2));
-document.getElementById('to-step-3').addEventListener('click',()=>goToStep(3));
-document.getElementById('to-step-4').addEventListener('click',()=>goToStep(4));
-document.getElementById('back-to-step-1').addEventListener('click',()=>goToStep(1));
-document.getElementById('back-to-step-2').addEventListener('click',()=>goToStep(2));
-document.getElementById('back-to-step-3').addEventListener('click',()=>goToStep(3));
-
-// Shape cards in Step 1
-document.querySelectorAll('.shape-picker-card').forEach(card=>{
-  card.addEventListener('click',()=>{
-    document.querySelectorAll('.shape-picker-card').forEach(c=>c.classList.remove('active'));
-    card.classList.add('active');
-    state.shape=card.dataset.shape;
-    state.layout=getDefaultLayout(state.shape);
-    qrImgCache=null;
-  });
-});
-
-// ── Designer ─────────────────────────────────────────
-function initDesigner(){
-  // Resize canvas to match shape at high resolution
-  const cfg=SHAPE_CONFIGS[state.shape]||SHAPE_CONFIGS.landscape;
-  signCanvas.width=cfg.W*RENDER_SCALE;
-  signCanvas.height=cfg.H*RENDER_SCALE;
-  // Re-apply default layout if shape changed
-  state.layout=getDefaultLayout(state.shape);
-  renderCanvas();
-  if(!controlsWired){wireControls();controlsWired=true;}
-}
-
-function wireControls(){
-  // Material toggle
-  document.querySelectorAll('[data-material]').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      state.material=btn.dataset.material;
-      document.querySelectorAll('[data-material]').forEach(b=>b.classList.toggle('active',b===btn));
-      document.getElementById('acrylic-colors-group').style.display=state.material==='acrylic'?'':'none';
-      document.getElementById('wood-color-group').style.display=state.material==='wood'?'':'none';
-      // Regenerate QR with correct colours for new material
-      state.qrDataUrl=null; qrImgCache=null;
-      renderCanvas();
-    });
-  });
-
-  // Acrylic swatches
-  document.querySelectorAll('.acrylic-swatch').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      state.acrylicColor=btn.dataset.color;
-      document.querySelectorAll('.acrylic-swatch').forEach(b=>b.classList.remove('selected'));
-      btn.classList.add('selected');
-      // colorLight must match new background colour
-      state.qrDataUrl=null; qrImgCache=null;
-      renderCanvas();
-    });
-  });
-
-  // Wood color
-  document.getElementById('wood-color')?.addEventListener('input',e=>{state.woodColor=e.target.value;state.qrDataUrl=null;qrImgCache=null;renderCanvas();});
-
-  // Font
-  document.querySelectorAll('input[name="font"]').forEach(r=>r.addEventListener('change',()=>{state.font=r.value;renderCanvas();}));
-
-  // CTA presets
-  document.querySelectorAll('.cta-preset').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      state.ctaText=btn.dataset.text;
-      document.querySelectorAll('.cta-preset').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('cta-custom').value='';renderCanvas();
-    });
-  });
-
-  // CTA custom
-  let ctaTimer;
-  document.getElementById('cta-custom').addEventListener('input',e=>{
-    const v=e.target.value.trim();if(v){state.ctaText=v;document.querySelectorAll('.cta-preset').forEach(b=>b.classList.remove('active'));clearTimeout(ctaTimer);ctaTimer=setTimeout(renderCanvas,300);}
-  });
-
-  // QR color
-  document.getElementById('color-qr')?.addEventListener('change',e=>{state.qrColor=e.target.value;state.qrDataUrl=null;qrImgCache=null;renderCanvas();});
-
-  // Social media
-  document.getElementById('input-instagram')?.addEventListener('input',e=>{state.instagram=e.target.value.replace(/^@/,'').trim();clearTimeout(ctaTimer);ctaTimer=setTimeout(renderSync,300);});
-  document.getElementById('input-facebook')?.addEventListener('input',e=>{state.facebook=e.target.value.trim();clearTimeout(ctaTimer);ctaTimer=setTimeout(renderSync,300);});
-  const socialPadSlider=document.getElementById('social-pad');
-  const socialPadVal=document.getElementById('social-pad-val');
-  socialPadSlider?.addEventListener('input',e=>{
-    state.socialPad=Number(e.target.value);
-    if(socialPadVal) socialPadVal.textContent=e.target.value+'px';
-    renderSync();
-  });
-
-  // Reset layout
-  document.getElementById('reset-layout')?.addEventListener('click',()=>{state.layout=getDefaultLayout(state.shape);renderCanvas();});
-
-  wireElementToggles();
-  document.querySelectorAll('[data-align]').forEach(btn=>btn.addEventListener('click',()=>alignSelected(btn.dataset.align)));
-  document.getElementById('delete-selected')?.addEventListener('click',()=>{
-    if(!state.selected)return;
-    const key=state.selected;
-    state.visible[key]=false;
-    const tog=document.querySelector(`[data-element-key="${key}"]`);
-    if(tog){tog.textContent='Show';tog.classList.add('el-off');}
-    state.selected=null;updateAlignToolbar();renderSync();
-  });
-  updateAlignToolbar();
-
-  wireDragDrop();
-}
-
-// ── Drag & Drop ──────────────────────────────────────
-function canvasPos(clientX,clientY){
-  const rect=signCanvas.getBoundingClientRect();
-  const cfg=SHAPE_CONFIGS[state.shape]||SHAPE_CONFIGS.portrait;
-  // Return logical coords (0..W, 0..H) so they match state.bounds and state.layout
-  return{x:(clientX-rect.left)*cfg.W/rect.width,y:(clientY-rect.top)*cfg.H/rect.height};
+/* ── drag & drop / selection ── */
+function canvasPos(clientX, clientY){
+  const rect=canvas.getBoundingClientRect();
+  const cfg=SHAPE_CONFIGS[design.shape];
+  return { x:(clientX-rect.left)*cfg.W/rect.width, y:(clientY-rect.top)*cfg.H/rect.height };
 }
 function hitTest(x,y){
-  for(const key of ['instruction','cta','stars','reviewLabel','businessName','qr']){
-    const b=state.bounds[key];if(b&&x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h)return key;
-  }return null;
+  for (const key of ['instruction','cta','stars','reviewLabel','businessName','qr']){
+    const b=bounds[key];
+    if (b && design.visible[key] && x>=b.x && x<=b.x+b.w && y>=b.y && y<=b.y+b.h) return key;
+  }
+  return null;
 }
-function wireDragDrop(){
-  signCanvas.addEventListener('mousedown',e=>{
-    const pos=canvasPos(e.clientX,e.clientY),key=hitTest(pos.x,pos.y);
-    if(key){state.dragging=key;state.selected=key;state.dragOffset={x:pos.x-state.layout[key].x,y:pos.y-state.layout[key].y};signCanvas.style.cursor='grabbing';updateAlignToolbar();e.preventDefault();}
-    else{state.selected=null;updateAlignToolbar();renderSync();}
-  });
-  window.addEventListener('mousemove',e=>{
-    if(state.dragging){const pos=canvasPos(e.clientX,e.clientY);state.layout[state.dragging].x=Math.round(pos.x-state.dragOffset.x);state.layout[state.dragging].y=Math.round(pos.y-state.dragOffset.y);renderSync();}
-    else{const pos=canvasPos(e.clientX,e.clientY);signCanvas.style.cursor=hitTest(pos.x,pos.y)?'grab':'default';}
-  });
-  window.addEventListener('mouseup',()=>{if(state.dragging){state.dragging=null;signCanvas.style.cursor='default';}});
-  signCanvas.addEventListener('touchstart',e=>{const t=e.touches[0],pos=canvasPos(t.clientX,t.clientY),key=hitTest(pos.x,pos.y);if(key){state.dragging=key;state.selected=key;state.dragOffset={x:pos.x-state.layout[key].x,y:pos.y-state.layout[key].y};updateAlignToolbar();e.preventDefault();}},{passive:false});
-  window.addEventListener('touchmove',e=>{if(!state.dragging)return;const t=e.touches[0],pos=canvasPos(t.clientX,t.clientY);state.layout[state.dragging].x=Math.round(pos.x-state.dragOffset.x);state.layout[state.dragging].y=Math.round(pos.y-state.dragOffset.y);renderSync();e.preventDefault();},{passive:false});
-  window.addEventListener('touchend',()=>{state.dragging=null;});
+canvas.addEventListener('mousedown', e=>{
+  const pos=canvasPos(e.clientX,e.clientY), key=hitTest(pos.x,pos.y);
+  if (key){
+    dragging=key; selected=key;
+    dragOffset={x:pos.x-design.layout[key].x, y:pos.y-design.layout[key].y};
+    canvas.style.cursor='grabbing';
+    updateToolbar(); paint(); e.preventDefault();
+  } else { selected=null; updateToolbar(); paint(); }
+});
+window.addEventListener('mousemove', e=>{
+  if (dragging){
+    const pos=canvasPos(e.clientX,e.clientY);
+    design.layout[dragging].x=Math.round(pos.x-dragOffset.x);
+    design.layout[dragging].y=Math.round(pos.y-dragOffset.y);
+    paint();
+  } else if (e.target===canvas){
+    const pos=canvasPos(e.clientX,e.clientY);
+    canvas.style.cursor=hitTest(pos.x,pos.y)?'grab':'default';
+  }
+});
+window.addEventListener('mouseup', ()=>{ if(dragging){dragging=null;canvas.style.cursor='default';} });
+canvas.addEventListener('touchstart', e=>{
+  const t=e.touches[0], pos=canvasPos(t.clientX,t.clientY), key=hitTest(pos.x,pos.y);
+  if (key){
+    dragging=key; selected=key;
+    dragOffset={x:pos.x-design.layout[key].x,y:pos.y-design.layout[key].y};
+    updateToolbar(); e.preventDefault();
+  }
+},{passive:false});
+window.addEventListener('touchmove', e=>{
+  if(!dragging)return;
+  const t=e.touches[0], pos=canvasPos(t.clientX,t.clientY);
+  design.layout[dragging].x=Math.round(pos.x-dragOffset.x);
+  design.layout[dragging].y=Math.round(pos.y-dragOffset.y);
+  paint(); e.preventDefault();
+},{passive:false});
+window.addEventListener('touchend', ()=>{dragging=null;});
+
+/* toolbar */
+const EL_NAMES={qr:'QR code',businessName:'Business name',reviewLabel:'"Google Reviews"',stars:'Stars',cta:'Call to action',instruction:'Small print'};
+function updateToolbar(){
+  document.getElementById('sel-label').textContent = selected ? EL_NAMES[selected] : 'Click an element to select it';
+  document.querySelectorAll('.align-btn').forEach(b=>b.disabled=!selected);
+}
+document.querySelectorAll('[data-align]').forEach(b=>b.addEventListener('click',()=>{
+  if(!selected||!bounds[selected])return;
+  const cfg=SHAPE_CONFIGS[design.shape], W=cfg.W, H=cfg.H, bb=bounds[selected];
+  const dir=b.dataset.align;
+  if(dir==='left')        design.layout[selected].x+=-bb.x;
+  else if(dir==='hcenter')design.layout[selected].x+=(W/2)-(bb.x+bb.w/2);
+  else if(dir==='right')  design.layout[selected].x+=W-(bb.x+bb.w);
+  else if(dir==='top')    design.layout[selected].y+=-bb.y;
+  else if(dir==='vcenter')design.layout[selected].y+=(H/2)-(bb.y+bb.h/2);
+  else if(dir==='bottom') design.layout[selected].y+=H-(bb.y+bb.h);
+  paint();
+}));
+document.getElementById('hide-selected').addEventListener('click',()=>{
+  if(!selected)return;
+  design.visible[selected]=false;
+  const t=document.querySelector(`[data-el="${selected}"]`);
+  if(t){t.textContent='Show';t.classList.add('el-off');}
+  selected=null; updateToolbar(); paint();
+});
+
+/* ── free watermarked download ── */
+function freeDownload(){
+  if (!design.reviewUrl){ toast('Pick your business (or paste a link) first — the QR needs somewhere to point'); openSection('sec-business'); return; }
+  const scan=qrScanCheck(design);
+  if (scan.level==='bad' && !confirm('Heads up: the scan check says this QR will NOT scan as designed.\n\n'+scan.msg+'\n\nDownload anyway?')) return;
+  const off=document.createElement('canvas');
+  renderSign(off, design, { scale:2, watermark:true });
+  off.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`${(design.businessName||'review-sign').replace(/[^a-z0-9]/gi,'-').toLowerCase()}-preview.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },'image/png');
+  toast('Preview downloaded — the paid file has no watermark');
+}
+document.getElementById('btn-free-download').addEventListener('click', freeDownload);
+document.getElementById('btn-free-download-2').addEventListener('click', freeDownload);
+
+function openSection(id){
+  const el=document.getElementById(id);
+  if(el){ el.open=true; el.scrollIntoView({behavior:'smooth'}); }
 }
 
-// ── Element Visibility & Alignment ───────────────────
-function wireElementToggles(){
-  document.querySelectorAll('[data-element-key]').forEach(btn=>{
-    const key=btn.dataset.elementKey;
-    btn.addEventListener('click',()=>{
-      state.visible[key]=!state.visible[key];
-      btn.textContent=state.visible[key]?'Hide':'Show';
-      btn.classList.toggle('el-off',!state.visible[key]);
-      if(!state.visible[key]&&state.selected===key){state.selected=null;updateAlignToolbar();}
-      renderSync();
-    });
-  });
+/* ── checkout ── */
+const modal=document.getElementById('pricing-modal');
+function openModal(){
+  if (!design.reviewUrl){ toast('Pick your business (or paste a link) first'); openSection('sec-business'); return; }
+  const scan=qrScanCheck(design);
+  if (scan.level==='bad'){
+    toast('Fix the QR contrast first — we won\'t sell you a sign that can\'t scan');
+    return;
+  }
+  modal.classList.add('open');
 }
+document.getElementById('btn-buy').addEventListener('click', openModal);
+document.getElementById('btn-buy-2').addEventListener('click', openModal);
+document.getElementById('modal-close').addEventListener('click', ()=>modal.classList.remove('open'));
+modal.addEventListener('click', e=>{ if(e.target===modal) modal.classList.remove('open'); });
 
-function updateAlignToolbar(){
-  const names={qr:'QR Code',businessName:'Business Name',reviewLabel:'Google Reviews',stars:'Stars',cta:'Call to Action',instruction:'Instruction'};
-  document.getElementById('align-label').textContent=state.selected?(names[state.selected]||state.selected):'Select an element';
-  const on=!!state.selected;
-  document.querySelectorAll('.align-btn').forEach(b=>b.disabled=!on);
-}
-
-function alignSelected(dir){
-  const key=state.selected;
-  if(!key||!state.bounds[key])return;
-  const cfg=SHAPE_CONFIGS[state.shape];
-  const W=cfg.W,H=cfg.H,b=state.bounds[key];
-  if(dir==='left')        state.layout[key].x+=-b.x;
-  else if(dir==='hcenter')state.layout[key].x+=(W/2)-(b.x+b.w/2);
-  else if(dir==='right')  state.layout[key].x+=W-(b.x+b.w);
-  else if(dir==='top')    state.layout[key].y+=-b.y;
-  else if(dir==='vcenter')state.layout[key].y+=(H/2)-(b.y+b.h/2);
-  else if(dir==='bottom') state.layout[key].y+=H-(b.y+b.h);
-  renderSync();
-}
-
-// ── Checkout ─────────────────────────────────────────
+const TIER_LABELS={digital:'Buy Digital — $19',print:'Buy Print pack — $39',engraved:'Order engraved — $79'};
 document.querySelectorAll('.checkout-btn').forEach(btn=>{
-  btn.addEventListener('click',async()=>{
-    const tier=btn.closest('[data-tier]')?.dataset.tier;if(!tier||!state.reviewUrl)return;
-    btn.disabled=true;btn.textContent='Processing…';
-    sessionStorage.setItem('qrSignDesign',JSON.stringify({
-      businessName:state.businessName,reviewUrl:state.reviewUrl,
-      material:state.material,acrylicColor:state.acrylicColor,woodColor:state.woodColor,
-      shape:state.shape,font:state.font,ctaText:state.ctaText,qrColor:state.qrColor,
-      instagram:state.instagram,facebook:state.facebook,socialPad:state.socialPad,layout:state.layout,qrDataUrl:state.qrDataUrl,
-    }));
+  btn.addEventListener('click', async ()=>{
+    const tier=btn.dataset.tier;
+    btn.disabled=true; btn.textContent='One moment…';
+    // Persist the design for the success page (and same-device recovery)
+    try {
+      sessionStorage.setItem('qrSignDesign', JSON.stringify(design));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(design));
+    } catch(e){}
     try{
-      const res=await fetch('/api/create-checkout-session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tier})});
-      const data=await res.json();if(data.url)window.location.href=data.url;else throw new Error();
-    }catch{btn.disabled=false;btn.textContent=tier==='digital'?'Buy Digital – $14.99':'Buy Print-Ready – $29.99';alert('Could not start checkout. Please try again.');}
+      const res=await fetch('/api/create-checkout-session',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ tier, businessName:design.businessName, placeId:placeMeta.placeId }),
+      });
+      const data=await res.json();
+      if (data.url) window.location.href=data.url;
+      else throw new Error(data.error||'no url');
+    }catch(err){
+      btn.disabled=false; btn.textContent=TIER_LABELS[tier]||'Try again';
+      toast('Checkout is not available right now — your design is saved, try again shortly');
+    }
   });
 });
+
+/* ── init ── */
+function syncControlsFromDesign(){
+  // bg type
+  document.querySelectorAll('#bg-type-row .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.bgtype===design.bgType));
+  syncBgRows();
+  document.getElementById('bg-color').value=design.bgColor;
+  document.getElementById('bg-color2').value=design.bgColor2;
+  document.getElementById('bg-angle').value=design.bgAngle;
+  document.getElementById('bg-angle-out').textContent=design.bgAngle+'°';
+  // text colour mode
+  const custom=design.textColor && design.textColor!=='auto';
+  document.getElementById('text-auto-btn').classList.toggle('active',!custom);
+  document.getElementById('text-custom-btn').classList.toggle('active',custom);
+  document.getElementById('text-color-row').style.display=custom?'':'none';
+  if (custom) document.getElementById('text-color').value=design.textColor;
+  document.getElementById('star-color').value=design.starColor;
+  // qr
+  document.querySelectorAll('#qr-style-row .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.qrstyle===design.qrStyle));
+  document.querySelectorAll('#qr-eye-row .seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.qreye===design.qrEyeStyle));
+  document.getElementById('qr-color').value=design.qrColor;
+  const pt=document.getElementById('qr-panel-toggle');
+  pt.textContent=design.qrPanel?'On':'Off';
+  pt.classList.toggle('el-off', !design.qrPanel);
+  document.getElementById('qr-panel-color-row').style.display=design.qrPanel?'':'none';
+  document.getElementById('qr-panel-color').value=design.qrPanelColor;
+  document.getElementById('qr-scale').value=design.qrScale;
+  document.getElementById('qr-scale-out').textContent=Math.round(design.qrScale*100)+'%';
+  // wording
+  document.querySelectorAll('#cta-presets .chip').forEach(b=>b.classList.toggle('active', b.dataset.cta===design.ctaText));
+  document.getElementById('in-instruction').value=design.instructionText==='Point your phone camera at the code'?'':design.instructionText;
+  headingSel.value=design.headingFont;
+  bodySel.value=design.bodyFont;
+  // biz + socials
+  document.getElementById('in-bizname').value=design.businessName||'';
+  document.getElementById('in-instagram').value=design.instagram||'';
+  document.getElementById('in-facebook').value=design.facebook||'';
+  document.getElementById('social-pad').value=design.socialPad;
+  document.getElementById('social-pad-out').textContent=design.socialPad;
+  // shape
+  document.querySelectorAll('.shape-cell').forEach(c=>c.classList.toggle('active', c.dataset.shape===design.shape));
+  // templates
+  document.querySelectorAll('.tpl-chip').forEach(c=>c.classList.toggle('active', c.dataset.tpl===design.template));
+  // element toggles
+  document.querySelectorAll('#element-toggles .el-toggle').forEach(b=>{
+    const key=b.dataset.el;
+    b.textContent=design.visible[key]?'Hide':'Show';
+    b.classList.toggle('el-off', !design.visible[key]);
+  });
+  if (design.reviewUrl) showSelectedBiz(design.businessName||'Saved link', design.reviewUrl);
+}
+
+(async function init(){
+  // ?template= from the landing gallery
+  const params=new URLSearchParams(location.search);
+  const tplParam=params.get('template');
+  if (tplParam && TEMPLATES.some(t=>t.id===tplParam)){
+    design=applyTemplate(design, tplParam);
+  }
+  // Prefill support: /design.html?url=…&name=… (marketing links, demos, tests)
+  const urlParam=params.get('url');
+  if (urlParam && /^https?:\/\//i.test(urlParam)) design.reviewUrl=urlParam;
+  const nameParam=params.get('name');
+  if (nameParam) design.businessName=nameParam.slice(0,48);
+  if (!design.layout) design.layout=getDefaultLayout(design.shape);
+
+  try {
+    await Promise.all([
+      document.fonts.load(`bold 36px '${design.headingFont}'`),
+      document.fonts.load(`400 14px '${design.bodyFont}'`),
+      document.fonts.load("bold 26px Inter"),
+    ]);
+  } catch(e){}
+
+  syncControlsFromDesign();
+  updateToolbar();
+  paint();
+
+  // Re-render template thumbs once fonts are in
+  document.querySelectorAll('.tpl-chip').forEach(chip=>{
+    const tpl=TEMPLATES.find(t=>t.id===chip.dataset.tpl);
+    const td=applyTemplate(defaultDesign(), tpl.id);
+    td.businessName=tpl.name; td.reviewUrl='https://example.com/demo';
+    renderSign(chip.querySelector('canvas'), td, { scale: 0.5 });
+  });
+})();

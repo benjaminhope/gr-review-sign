@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ReviewSign self-test</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Fraunces:wght@600;700&family=Montserrat:wght@400;700&family=Playfair+Display:wght@400;700&family=Oswald:wght@400;700&family=Lato:wght@400;700&family=Dancing+Script:wght@700&family=Caveat:wght@600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: Inter, sans-serif; background:#f5f2ea; padding: 20px; }
+    h1 { font-size: 20px; } h2 { font-size: 15px; margin: 18px 0 6px; }
+    #results { white-space: pre-wrap; font-family: Consolas, monospace; font-size: 13px; background: #fff; border: 1px solid #ddd; padding: 14px; border-radius: 8px; }
+    .grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+    .grid figure { margin: 0; text-align: center; font-size: 11px; }
+    .grid canvas { width: 130px; height: auto; border: 1px solid #ccc; background: #fff; }
+    .pass { color: #0a7a43; } .fail { color: #c0392b; font-weight: 700; }
+  </style>
+</head>
+<body>
+<h1>ReviewSign render + scan self-test</h1>
+<div id="results">Running…</div>
+<h2>Template renders</h2>
+<div class="grid" id="tpl-grid"></div>
+<h2>Shape renders</h2>
+<div class="grid" id="shape-grid"></div>
+
+<script src="/vendor/qrcode.js"></script>
+<script src="/vendor/jsQR.js"></script>
+<script src="/render-core.js"></script>
+<script>
+(async function(){
+  const out = [];
+  const log = (ok, msg) => out.push(`${ok?'PASS':'FAIL'}  ${msg}`);
+  const REVIEW_URL = 'https://search.google.com/local/writereview?placeid=ChIJtestPLACEID123456';
+
+  try {
+    await Promise.all(['Inter','Fraunces','Montserrat','Playfair Display','Oswald','Lato','Dancing Script','Caveat']
+      .map(f=>document.fonts.load(`bold 36px '${f}'`)));
+  } catch(e){}
+
+  function decodeQR(canvas){
+    // jsQR wants RGBA pixel data of the full image
+    const ctx = canvas.getContext('2d');
+    const img = ctx.getImageData(0,0,canvas.width,canvas.height);
+    const res = jsQR(img.data, img.width, img.height);
+    return res ? res.data : null;
+  }
+
+  // 1. every template renders + QR decodes
+  const tplGrid = document.getElementById('tpl-grid');
+  for (const tpl of TEMPLATES){
+    const d = applyTemplate(defaultDesign(), tpl.id);
+    d.businessName = tpl.name;
+    d.reviewUrl = REVIEW_URL;
+    d.layout = getDefaultLayout(d.shape);
+    const fig = document.createElement('figure');
+    const c = document.createElement('canvas');
+    fig.appendChild(c);
+    const cap = document.createElement('figcaption'); cap.textContent = tpl.name; fig.appendChild(cap);
+    tplGrid.appendChild(fig);
+    try {
+      renderSign(c, d, { scale: 2 });
+      const decoded = decodeQR(c);
+      const scan = qrScanCheck(d);
+      if (decoded === REVIEW_URL) log(true, `template ${tpl.id}: renders, QR decodes (${scan.level})`);
+      else if (decoded) log(false, `template ${tpl.id}: QR decodes to WRONG url: ${decoded}`);
+      else log(scan.level!=='ok', `template ${tpl.id}: QR did NOT decode (scan check says: ${scan.level} — ${scan.msg})`);
+    } catch(e){ log(false, `template ${tpl.id}: render threw: ${e.message}`); }
+  }
+
+  // 2. every shape renders + QR decodes with default design
+  const shapeGrid = document.getElementById('shape-grid');
+  for (const shape of Object.keys(SHAPE_CONFIGS)){
+    const d = defaultDesign();
+    d.shape = shape; d.layout = getDefaultLayout(shape);
+    d.businessName = 'Shape ' + shape;
+    d.reviewUrl = REVIEW_URL;
+    const fig = document.createElement('figure');
+    const c = document.createElement('canvas');
+    fig.appendChild(c);
+    const cap = document.createElement('figcaption'); cap.textContent = shape; fig.appendChild(cap);
+    shapeGrid.appendChild(fig);
+    try {
+      renderSign(c, d, { scale: 2 });
+      const decoded = decodeQR(c);
+      if (decoded === REVIEW_URL) log(true, `shape ${shape}: renders, QR decodes`);
+      else log(false, `shape ${shape}: QR did not decode`);
+    } catch(e){ log(false, `shape ${shape}: render threw: ${e.message}`); }
+  }
+
+  // 3. QR styles all decode
+  for (const style of ['square','rounded','dots']){
+    for (const eye of ['square','rounded']){
+      const d = defaultDesign();
+      d.layout = getDefaultLayout(d.shape);
+      d.reviewUrl = REVIEW_URL; d.qrStyle = style; d.qrEyeStyle = eye;
+      const c = document.createElement('canvas');
+      renderSign(c, d, { scale: 2 });
+      const decoded = decodeQR(c);
+      log(decoded===REVIEW_URL, `qr style=${style} eye=${eye}: ${decoded===REVIEW_URL?'decodes':'DOES NOT decode'}`);
+    }
+  }
+
+  // 4. QR panel on dark bg decodes
+  {
+    const d = defaultDesign();
+    d.layout = getDefaultLayout(d.shape);
+    d.reviewUrl = REVIEW_URL;
+    d.bgColor = '#141414'; d.qrPanel = true; d.qrPanelColor = '#FFFFFF'; d.qrColor = '#141414';
+    const c = document.createElement('canvas');
+    renderSign(c, d, { scale: 2 });
+    log(decodeQR(c)===REVIEW_URL, 'dark bg + white panel: QR decodes');
+  }
+
+  // 5. scannability guard fires for bad combos
+  {
+    const d = defaultDesign();
+    d.bgColor = '#222222'; d.qrColor = '#333333'; d.qrPanel = false;
+    log(qrScanCheck(d).level==='bad', 'scan guard flags low contrast as bad');
+    const d2 = defaultDesign();
+    d2.bgColor = '#141414'; d2.qrColor = '#FFFFFF'; d2.qrPanel = false;
+    const lvl = qrScanCheck(d2).level;
+    log(lvl==='warn'||lvl==='bad', `scan guard flags inverted QR (got: ${lvl})`);
+  }
+
+  // 6. watermark render doesn't break decoding badly (H error correction should survive)
+  {
+    const d = defaultDesign();
+    d.layout = getDefaultLayout(d.shape);
+    d.reviewUrl = REVIEW_URL;
+    const c = document.createElement('canvas');
+    renderSign(c, d, { scale: 2, watermark: true });
+    const decoded = decodeQR(c);
+    log(true, `watermarked preview: QR ${decoded===REVIEW_URL?'still decodes':'obscured (acceptable for preview)'}`);
+  }
+
+  // 7. print pack scale maths
+  {
+    const cfg = SHAPE_CONFIGS.portrait;
+    const a4scale = Math.ceil(3508/Math.max(cfg.W,cfg.H));
+    log(cfg.H*a4scale>=3508, `A4 export scale ${a4scale}x gives ${cfg.H*a4scale}px long edge (need ≥3508 for 300dpi)`);
+  }
+
+  const fails = out.filter(l=>l.startsWith('FAIL')).length;
+  out.unshift(`── ${out.length} checks, ${fails} failures ──`);
+  document.getElementById('results').innerHTML =
+    out.map(l=>`<span class="${l.startsWith('FAIL')?'fail':'pass'}">${l}</span>`).join('\n');
+  document.title = fails ? `FAIL(${fails}) selftest` : 'PASS selftest';
+})();
+</script>
+</body>
+</html>

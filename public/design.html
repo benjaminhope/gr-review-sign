@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Designer — ReviewSign</title>
+  <meta name="description" content="Design your Google review QR sign — free, no signup. Templates, colours, fonts, QR styles, live preview.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:ital,wght@0,500;0,600;0,700;1,500&family=Montserrat:wght@400;700&family=Playfair+Display:wght@400;700&family=Oswald:wght@400;700&family=Lato:wght@400;700&family=Dancing+Script:wght@700&family=Caveat:wght@600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="designer-body">
+
+<header class="designer-topbar">
+  <a class="brand" href="/">
+    <span class="brand-mark">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM18 18h3v3h-3z"/></svg>
+    </span>
+    <span>ReviewSign</span>
+  </a>
+  <div class="topbar-status" id="topbar-status">Untitled sign</div>
+  <div class="topbar-actions">
+    <button class="btn btn-ghost btn-sm" id="btn-free-download">Free preview PNG</button>
+    <button class="btn btn-accent btn-sm" id="btn-buy">Get the clean file</button>
+  </div>
+</header>
+
+<div class="designer-main">
+
+  <!-- ══════ CONTROLS ══════ -->
+  <aside class="panel">
+
+    <!-- Business -->
+    <details class="ctl-section" open id="sec-business">
+      <summary>
+        <span class="sec-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+        Your business
+        <span class="chev">›</span>
+      </summary>
+      <div class="ctl-body">
+        <div class="ctl-label">Search Google</div>
+        <div class="biz-search-wrap">
+          <input type="text" id="biz-search" class="text-input" placeholder="Type your business name…" autocomplete="off" spellcheck="false">
+          <div class="biz-results" id="biz-results"></div>
+        </div>
+        <div id="biz-selected" class="biz-selected" style="display:none">
+          <span class="ok">✓</span>
+          <div>
+            <strong id="biz-sel-name"></strong>
+            <small id="biz-sel-url"></small>
+          </div>
+        </div>
+        <div id="places-attribution" style="display:none"></div>
+        <p class="hint">Not showing up, or no internet search? <a href="#" id="manual-link-toggle">Paste a link instead</a></p>
+        <div id="manual-link-row" style="display:none;margin-top:8px">
+          <input type="text" id="manual-url" class="text-input" placeholder="https://g.page/r/…  or any URL">
+        </div>
+        <div class="ctl-label">Business name on the sign</div>
+        <input type="text" id="in-bizname" class="text-input" placeholder="Your Business Name" maxlength="48">
+      </div>
+    </details>
+
+    <!-- Templates -->
+    <details class="ctl-section" open>
+      <summary>
+        <span class="sec-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 12h18M12 3v18"/></svg></span>
+        Templates
+        <span class="chev">›</span>
+      </summary>
+      <div class="ctl-body">
+        <div class="tpl-strip" id="tpl-strip"></div>
+      </div>
+    </details>
+
+    <!-- Shape -->
+    <details class="ctl-section">
+      <summary>
+        <span class="sec-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 20h20L12 2z"/></svg></span>
+        Shape
+        <span class="chev">›</span>
+      </summary>
+      <div class="ctl-body">
+        <div class="shape-grid" id="shape-grid"></div>
+      </div>
+    </details>
+
+    <!-- Colours -->
+    <details class="ctl-section" open>
+      <summary>
+        <span class="sec-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg></span>
+        Background &amp; colours
+        <span class="chev">›</span>
+      </summary>
+      <div class="ctl-body">
+        <div class="ctl-label">Background style</div>
+        <div class="seg-row" id="bg-type-row">
+          <button class="seg-btn active" data-bgtype="solid">Solid</button>
+          <button class="seg-btn" data-bgtype="gradient">Gradient</button>
+          <button class="seg-btn" data-bgtype="chalk">Chalk</button>
+          <button class="seg-btn" data-bgtype="wood">Timber</button>
+        </div>
+
+        <div class="ctl-label">Palette</div>
+        <div class="swatch-grid" id="bg-swatches"></div>
+
+        <div class="color-row" style="margin-top:10px">
+          <input type="color" id="bg-color" class="color-input" value="#FFFFFF"><span>Base colour</span>
+        </div>
+        <div class="color-row" id="bg2-row" style="margin-top:8px;display:none">
+          <input type="color" id="bg-color2" class="color-input" value="#E8E1D5"><span>Second colour</span>
+        </div>
+        <div class="range-row" id="angle-row" style="margin-top:8px;display:none">
+          <input type="range" id="bg-angle" min="0" max="360" value="135" step="5"><output id="bg-angle-out">135°</output>
+        </div>
+
+        <div class="ctl-label">Text colour</div>
+        <div class="seg-row">
+          <button class="seg-btn active" id="text-auto-btn">Auto</button>
+          <button class="seg-btn" id="text-custom-btn">Custom</button>
+        </div>
+        <div class="color-row" id="text-color-row" style="margin-top:8px;display:none">
+          <input type="color" id="text-color" class="color-input" value="#141414"><span>Text</span>
+        </div>
+        <div class="color-row" style="margin-top:8px">
+          <input type="color" id="star-color" class="color-input" value="#FBBC04"><span>Stars</span>
+        </div>
+      </div>
+    </details>
+
+    <!-- QR style -->
+    <details class="ctl-section" open>
+      <summary>
+        <span class="sec-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM18 18h3v3h-3z"/></svg></span>
+        QR code style
+        <span class="chev">›</span>
+      </summary>
+      <div class="ctl-body">
+        <div class="ctl-label">Module shape</div>
+        <div class="seg-row" id="qr-style-row">
+          <button class="seg-btn active" data-qrstyle="square">Square</button>
+          <button class="seg-btn" data-qrstyle="rounded">Rounded</button>
+          <button class="seg-btn" data-qrstyle="dots">Dots</button>
+        </div>
+        <div class="ctl-label">Corner eyes</div>
+        <div class="seg-row" id="qr-eye-row">
+          <button class="seg-btn active" data-qreye="square">Square</button>
+          <button class="seg-btn" data-qreye="rounded">Rounded</button>
+        </div>
+        <div class="ctl-label">Colour &amp; backing</div>
+        <div class="color-row">
+          <input type="color" id="qr-color" class="color-input" value="#141414"><span>QR colour</span>
+        </div>
+        <div class="el-row" style="margin-top:10px;border-bottom:none">
+          <span>White backing panel</span>
+          <button class="el-toggle" id="qr-panel-toggle">Off</button>
+        </div>
+        <div class="color-row" id="qr-panel-color-row" style="display:none">
+          <input type="color" id="qr-panel-color" class="color-input" value="#FFFFFF"><span>Panel colour</span>
+        </div>
+        <div class="ctl-label">Size</div>
+        <div class="range-row">
+          <input type="range" id="qr-scale" min="0.7" max="1.35" value="1" step="0.05"><output id="qr-scale-out">100%</output>
+        </div>
+        <div class="scan-pill ok" id="scan-pill">
+          <span class="si">●</span><span id="scan-msg">Scans reliably.</span>
+        </div>
+      </div>
+    </details>
+
+    <!-- Text & fonts -->
+    <details class="ctl-section">
+      <summary>
+        <span class="sec-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></span>
+        Wording &amp; fonts
+        <span class="chev">›</span>
+      </summary>
+      <div class="ctl-body">
+        <div class="ctl-label">Call to action</div>
+        <div class="chip-row" id="cta-presets">
+          <button class="chip active" data-cta="Leave us a Google review!">Leave us a Google review!</button>
+          <button class="chip" data-cta="Scan to share your experience">Scan to share your experience</button>
+          <button class="chip" data-cta="How did we do? Let us know!">How did we do?</button>
+          <button class="chip" data-cta="30 seconds. Means the world.">30 seconds. Means the world.</button>
+        </div>
+        <input type="text" id="cta-custom" class="text-input" placeholder="Or write your own…" maxlength="70" style="margin-top:9px">
+        <div class="ctl-label">Small print line</div>
+        <input type="text" id="in-instruction" class="text-input" placeholder="Point your phone camera at the code" maxlength="70">
+        <div class="ctl-label">Heading font</div>
+        <select class="select-input" id="font-heading"></select>
+        <div class="ctl-label">Body font</div>
+        <select class="select-input" id="font-body"></select>
+      </div>
+    </details>
+
+    <!-- Socials -->
+    <details class="ctl-section">
+      <summary>
+        <span class="sec-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/></svg></span>
+        Social handles
+        <span class="chev">›</span>
+      </summary>
+      <div class="ctl-body">
+        <div class="ctl-label">Instagram</div>
+        <input type="text" id="in-instagram" class="text-input" placeholder="@yourhandle" maxlength="40">
+        <div class="ctl-label">Facebook</div>
+        <input type="text" id="in-facebook" class="text-input" placeholder="facebook.com/yourpage" maxlength="60">
+        <div class="ctl-label">Distance from bottom</div>
+        <div class="range-row">
+          <input type="range" id="social-pad" min="10" max="200" value="40" step="2"><output id="social-pad-out">40</output>
+        </div>
+      </div>
+    </details>
+
+    <!-- Elements -->
+    <details class="ctl-section">
+      <summary>
+        <span class="sec-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M3 9h18"/></svg></span>
+        Show / hide elements
+        <span class="chev">›</span>
+      </summary>
+      <div class="ctl-body" id="element-toggles">
+        <div class="el-row"><span>QR code</span><button class="el-toggle" data-el="qr">Hide</button></div>
+        <div class="el-row"><span>Business name</span><button class="el-toggle" data-el="businessName">Hide</button></div>
+        <div class="el-row"><span>"Google Reviews"</span><button class="el-toggle" data-el="reviewLabel">Hide</button></div>
+        <div class="el-row"><span>Stars</span><button class="el-toggle" data-el="stars">Hide</button></div>
+        <div class="el-row"><span>Call to action</span><button class="el-toggle" data-el="cta">Hide</button></div>
+        <div class="el-row"><span>Small print</span><button class="el-toggle" data-el="instruction">Hide</button></div>
+        <button class="btn btn-ghost btn-sm" id="reset-layout" style="width:100%;margin-top:12px">↺ Reset positions</button>
+      </div>
+    </details>
+
+  </aside>
+
+  <!-- ══════ STAGE ══════ -->
+  <div class="stage">
+    <div class="stage-toolbar">
+      <span class="tlabel" id="sel-label">Click an element to select it</span>
+      <button class="align-btn" data-align="left" title="Align left" disabled><svg width="15" height="15" viewBox="0 0 16 16"><rect x="1" y="2" width="2" height="12" rx="1" fill="currentColor"/><rect x="4" y="5" width="7" height="6" rx="1" fill="currentColor"/></svg></button>
+      <button class="align-btn" data-align="hcenter" title="Centre horizontally" disabled><svg width="15" height="15" viewBox="0 0 16 16"><rect x="7" y="1" width="2" height="14" rx="1" fill="currentColor"/><rect x="2" y="5" width="12" height="6" rx="1" fill="currentColor"/></svg></button>
+      <button class="align-btn" data-align="right" title="Align right" disabled><svg width="15" height="15" viewBox="0 0 16 16"><rect x="13" y="2" width="2" height="12" rx="1" fill="currentColor"/><rect x="5" y="5" width="7" height="6" rx="1" fill="currentColor"/></svg></button>
+      <div class="align-sep"></div>
+      <button class="align-btn" data-align="top" title="Align top" disabled><svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="1" width="12" height="2" rx="1" fill="currentColor"/><rect x="5" y="4" width="6" height="7" rx="1" fill="currentColor"/></svg></button>
+      <button class="align-btn" data-align="vcenter" title="Centre vertically" disabled><svg width="15" height="15" viewBox="0 0 16 16"><rect x="1" y="7" width="14" height="2" rx="1" fill="currentColor"/><rect x="5" y="2" width="6" height="12" rx="1" fill="currentColor"/></svg></button>
+      <button class="align-btn" data-align="bottom" title="Align bottom" disabled><svg width="15" height="15" viewBox="0 0 16 16"><rect x="2" y="13" width="12" height="2" rx="1" fill="currentColor"/><rect x="5" y="5" width="6" height="7" rx="1" fill="currentColor"/></svg></button>
+      <div class="align-sep"></div>
+      <button class="align-btn" id="hide-selected" title="Hide element" disabled><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button>
+    </div>
+
+    <div class="sign-holder">
+      <canvas id="sign-canvas"></canvas>
+    </div>
+    <p class="drag-hint">Drag any element on the sign to reposition it · changes save automatically in this browser</p>
+
+    <div class="stage-cta">
+      <button class="btn btn-ghost" id="btn-free-download-2">Download free preview (watermarked)</button>
+      <button class="btn btn-accent btn-lg" id="btn-buy-2">Get the clean file →</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════ PRICING MODAL ══════ -->
+<div class="modal-backdrop" id="pricing-modal">
+  <div class="modal">
+    <button class="modal-close" id="modal-close">✕</button>
+    <div class="kicker">One-time purchase · AUD · GST inc.</div>
+    <h2>Take your sign home.</h2>
+    <p class="section-sub">Your design is saved in this browser — it'll be waiting on the download page right after payment.</p>
+    <div class="pricing-row">
+      <div class="price-card">
+        <h3>Digital</h3>
+        <p class="price-desc">For screens &amp; home printing</p>
+        <div class="price-amount">$19</div>
+        <div class="price-gst">One-time · GST inc.</div>
+        <ul class="price-feats">
+          <li>High-res PNG, no watermark</li>
+          <li>Instant download</li>
+        </ul>
+        <button class="btn btn-ghost checkout-btn" data-tier="digital">Buy Digital — $19</button>
+      </div>
+      <div class="price-card featured">
+        <div class="price-flag">Most popular</div>
+        <h3>Print pack</h3>
+        <p class="price-desc">For professional printing</p>
+        <div class="price-amount">$39</div>
+        <div class="price-gst">One-time · GST inc.</div>
+        <ul class="price-feats">
+          <li>Everything in Digital</li>
+          <li>300 DPI · A5, A4 &amp; 5×7″ sizes</li>
+        </ul>
+        <button class="btn btn-accent checkout-btn" data-tier="print">Buy Print pack — $39</button>
+      </div>
+      <div class="price-card">
+        <h3>Engraved acrylic</h3>
+        <p class="price-desc">The real sign, posted to you</p>
+        <div class="price-amount">$79</div>
+        <div class="price-gst">GST inc. · AU postage included</div>
+        <ul class="price-feats">
+          <li>Laser-engraved at our Brisbane workshop</li>
+          <li>~150×100 mm + counter stand · ships in 5 days</li>
+        </ul>
+        <button class="btn btn-primary checkout-btn" data-tier="engraved">Order engraved — $79</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="/vendor/qrcode.js"></script>
+<script src="/render-core.js"></script>
+<script src="/app.js"></script>
+<script
+  src="https://maps.googleapis.com/maps/api/js?key={{GOOGLE_API_KEY}}&libraries=places&callback=initPlacesAPI"
+  async defer
+></script>
+</body>
+</html>
