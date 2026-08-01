@@ -10,6 +10,14 @@ export const DEMO_NAMES: Record<string, string> = {
   classic: 'Harvest Lane Deli', chalk: 'Marigold Espresso', goldblack: 'Velvet & Co. Hair',
   mint: 'Riverside Physio', trade: 'Brightline Electrical', blush: 'Petal Beauty Bar',
   ocean: 'Anchor Dental', timber: 'The Woodshed Cafe', midnight: 'Studio North', pop: 'Scoop! Gelato',
+  smile: 'Sunny Deli', thumbsup: 'Corner Store Cafe', scanhere: 'Fix-It Plumbing',
+  minimal: 'Studio M', bigqr: 'Quick Cuts Barber', goldarch: 'The Grand Salon',
+  copperround: 'Copper & Oak Bar', bluecircle: 'City Dental', redpin: 'Pronto Pizza',
+  homehouse: 'Hearth Realty', noirspeech: 'Noir Wine Bar', sunny: 'Sunny Side Brunch',
+  euroline: 'Maison Beauté', aluminium: 'Torque Auto', rosecircle: 'Rose Lane Bridal',
+  greentick: 'Greengrocer Co.', navypro: 'Harbour Legal', redalert: 'Blaze BBQ',
+  silverarch: 'Bright Smiles Dental', happyhour: 'The Local Taphouse', scriptwhite: 'Willow & Thread',
+  thumbgold: 'Prestige Detailing', smilewhite: 'Happy Days Cafe', arrowgold: 'Luxe Nail Studio',
 };
 
 export function demoDesign(tplId: string, name?: string, cta?: string) {

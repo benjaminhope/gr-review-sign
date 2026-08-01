@@ -75,6 +75,43 @@ function outlinePoints(shape: ShapeId, W: number, H: number): [number, number][]
       add(0, rH); add(W / 2, 0); add(W, rH); add(W, H); add(0, H);
       break;
     }
+    case 'smiley': {
+      const r = Math.min(W, H) / 2;
+      arc(W / 2, H / 2, r, 0, 2 * Math.PI, 72);
+      break;
+    }
+    case 'thumb': {
+      const fx = 60, fw = W - 120, fTop = H * 0.40, r = 34;
+      add(fx + r, fTop);
+      add(fx + fw * 0.18, fTop);
+      quad(fx + fw * 0.18, fTop, fx - 26, fTop - 30, fx + fw * 0.10, H * 0.235);
+      quad(fx + fw * 0.10, H * 0.235, fx + fw * 0.16, H * 0.10, fx + fw * 0.36, H * 0.075);
+      quad(fx + fw * 0.36, H * 0.075, fx + fw * 0.56, H * 0.055, fx + fw * 0.60, H * 0.175);
+      quad(fx + fw * 0.60, H * 0.175, fx + fw * 0.62, H * 0.26, fx + fw * 0.52, fTop - 24);
+      quad(fx + fw * 0.52, fTop - 24, fx + fw * 0.80, fTop - 18, fx + fw - r, fTop);
+      quad(fx + fw - r, fTop, fx + fw, fTop, fx + fw, fTop + r);
+      add(fx + fw, H - 40 - r);
+      quad(fx + fw, H - 40 - r, fx + fw, H - 40, fx + fw - r, H - 40);
+      add(fx + r, H - 40);
+      quad(fx + r, H - 40, fx, H - 40, fx, H - 40 - r);
+      add(fx, fTop + r);
+      quad(fx, fTop + r, fx, fTop, fx + r, fTop);
+      break;
+    }
+    case 'arrow': {
+      const shaftW = W * 0.62, sx = (W - shaftW) / 2, headTop = H * 0.52, r = 26;
+      add(sx + r, 0);
+      add(sx + shaftW - r, 0);
+      quad(sx + shaftW - r, 0, sx + shaftW, 0, sx + shaftW, r);
+      add(sx + shaftW, headTop);
+      add(W - 8, headTop);
+      add(W / 2, H - 6);
+      add(8, headTop);
+      add(sx, headTop);
+      add(sx, r);
+      quad(sx, r, sx, 0, sx + r, 0);
+      break;
+    }
     default:
       add(0, 0); add(W, 0); add(W, H); add(0, H);
   }
@@ -285,31 +322,48 @@ export default function Sign3D({ design, className }: Props) {
     }
     const mesh = new THREE.Mesh(geo, [faceMat, sideMat]);
 
-    // scale + centre: longest edge ≈ 1.3 world units, stand on the bench
+    // Scale + centre: longest edge ≈ 1.3 world units. The sign sits DEAD
+    // VERTICAL (90° to the desk — production has no lean-back stand), raised
+    // slightly by the clear strip so it reads as floating.
+    const FLOAT = 0.055; // clear-strip lift
     const scale = 1.3 / Math.max(W, H);
     mesh.scale.setScalar(scale);
     geo.computeBoundingBox();
     const bb = geo.boundingBox!;
     mesh.position.set(
       -(bb.min.x + bb.max.x) / 2 * scale,
-      -0.7 - bb.min.y * scale,
+      -0.7 + FLOAT - bb.min.y * scale,
       -(bb.min.z + bb.max.z) / 2 * scale,
     );
-    // lean back on the stand slightly
-    mesh.rotation.x = -0.09;
     st.scene.add(mesh);
     st.mesh = mesh;
 
-    // simple acrylic stand wedge behind
+    // Floating stand: a clear acrylic strip clamped around the sign's bottom
+    // edge at exactly 90° — near-invisible, so the sign appears to hover.
     const standName = '__stand';
     const old = st.scene.getObjectByName(standName);
     if (old) st.scene.remove(old);
-    const stand = new THREE.Mesh(
-      new THREE.BoxGeometry(0.34, 0.02, 0.42),
-      new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, roughness: 0.1 }),
-    );
+    const signWidth = (bb.max.x - bb.min.x) * scale;
+    const slabDepth = (bb.max.z - bb.min.z) * scale;
+    const stand = new THREE.Group();
     stand.name = standName;
-    stand.position.set(0, -0.69, -0.1);
+    const clearMat = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff, transmission: 0.92, transparent: true, opacity: 0.5,
+      roughness: 0.05, thickness: 0.02, ior: 1.49,
+    });
+    // base strip flat on the desk
+    const base = new THREE.Mesh(
+      new THREE.BoxGeometry(Math.min(signWidth * 0.7, 0.9), 0.018, 0.24), clearMat,
+    );
+    base.position.set(0, -0.7 + 0.009, 0);
+    stand.add(base);
+    // channel walls gripping the sign's bottom edge, front and back
+    const wallGeom = new THREE.BoxGeometry(Math.min(signWidth * 0.7, 0.9), FLOAT + 0.06, 0.016);
+    for (const dz of [-(slabDepth / 2 + 0.012), slabDepth / 2 + 0.012]) {
+      const wallMesh = new THREE.Mesh(wallGeom, clearMat);
+      wallMesh.position.set(0, -0.7 + (FLOAT + 0.06) / 2, dz);
+      stand.add(wallMesh);
+    }
     st.scene.add(stand);
   }, [design, ready]);
 

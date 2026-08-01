@@ -77,7 +77,7 @@ export default function Landing() {
           <div className="wrap">
             <div className="kicker">Templates</div>
             <h2>Start from a design that already looks finished.</h2>
-            <p className="section-sub">Ten opinionated starting points, built around real shopfronts — then every one of them opens fully editable in the designer.</p>
+            <p className="section-sub">Opinionated starting points built around real shopfronts and real engraving materials — every one opens fully editable in the designer.</p>
             <TemplateGallery />
           </div>
         </section>

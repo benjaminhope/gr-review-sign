@@ -35,6 +35,9 @@ const SHAPE_ICONS: Record<ShapeId, string> = {
   speech: '<path d="M7,5 L27,5 Q31,5 31,9 L31,20 Q31,24 27,24 L17,24 L13,30 L11,24 L7,24 Q3,24 3,20 L3,9 Q3,5 7,5 Z"/>',
   pin: '<path d="M17,31 C10,22 6,17 6,11.5 A11,11 0,0,1 28,11.5 C28,17 24,22 17,31 Z"/>',
   house: '<polygon points="3,15 17,3 31,15 31,31 3,31"/>',
+  smiley: '<circle cx="17" cy="17" r="13"/><circle cx="12.5" cy="13.5" r="1.6" fill="currentColor" fill-opacity="1"/><circle cx="21.5" cy="13.5" r="1.6" fill="currentColor" fill-opacity="1"/><path d="M11,20 Q17,26 23,20" fill="none"/>',
+  thumb: '<path d="M7,16 L7,29 L25,29 L25,16 L20,16 Q22,10 20,6.5 Q18,4 16,6.5 Q16,11 11,16 Z"/>',
+  arrow: '<path d="M12,3 L22,3 L22,16 L29,16 L17,31 L5,16 L12,16 Z"/>',
 };
 
 interface PlacePrediction { place_id: string; structured_formatting: { main_text: string; secondary_text?: string } }

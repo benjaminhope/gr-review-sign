@@ -5,7 +5,7 @@ import qrcode from 'qrcode-generator';
 
 export type ShapeId =
   | 'portrait' | 'landscape' | 'rounded' | 'arch' | 'circle'
-  | 'speech' | 'pin' | 'house';
+  | 'speech' | 'pin' | 'house' | 'smiley' | 'thumb' | 'arrow';
 
 export interface ShapeConfig {
   W: number; H: number; label: string; desc: string;
@@ -21,6 +21,9 @@ export const SHAPE_CONFIGS: Record<ShapeId, ShapeConfig> = {
   speech:    { W: 800, H: 600, label: 'Speech Bubble', desc: 'Playful · says "review"',        style: 'split',    qrSize: 190, maxW: 450 },
   pin:       { W: 480, H: 700, label: 'Location Pin',  desc: 'Local services',                 style: 'centered', qrSize: 150, maxW: 260 },
   house:     { W: 540, H: 700, label: 'House',         desc: 'Homey local businesses',         style: 'centered', qrSize: 170, maxW: 400 },
+  smiley:    { W: 600, H: 600, label: 'Smiley',        desc: 'Scan me :)',                     style: 'centered', qrSize: 150, maxW: 300 },
+  thumb:     { W: 560, H: 680, label: 'Thumbs Up',     desc: 'The like, made real',            style: 'centered', qrSize: 150, maxW: 330 },
+  arrow:     { W: 480, H: 700, label: 'Arrow',         desc: 'Points at the code',             style: 'centered', qrSize: 150, maxW: 210 },
 };
 
 export const SIGN_FONTS = [
@@ -200,6 +203,13 @@ export function getDefaultLayout(shape: ShapeId): Layout {
     circle:   { qy: 66,  bnY: 268, rlY: 368, stY: 398, ctY: 440, inY: 492 },
     pin:      { qy: 34,  bnY: 196, rlY: 254, stY: 282, ctY: 322, inY: 398 },
     house:    { qy: 310, bnY: 250, rlY: 496, stY: 526, ctY: 566, inY: 662 },
+    // smiley: eyes (decoration) flank the QR "nose"; smile arc curves below;
+    // name + CTA tucked between features. All inside the circle clip.
+    smiley:   { qy: 168, bnY: 96,  rlY: 336, stY: 500, ctY: 356, inY: 540 },
+    // thumb: fist spans y272-640; two-line names need room before the labels
+    thumb:    { qy: 478, bnY: 288, rlY: 384, stY: 408, ctY: 442, inY: 610 },
+    // arrow: text in the shaft (y0-330), chevrons y335-445, QR in the head
+    arrow:    { qy: 400, bnY: 40,  rlY: 100, stY: 126, ctY: 168, inY: 262 },
   };
   const s = specs[shape] ?? specs.portrait;
   return {
@@ -264,7 +274,89 @@ export const TEMPLATES: Template[] = [
          headingFont: 'Inter', bodyFont: 'Inter', ctaText: '30 seconds. Means the world.' } },
   { id: 'pop', name: 'Speech Pop', tag: 'Playful & friendly',
     d: { shape: 'speech', engraveMaterial: 'white-red', qrStyle: 'rounded', qrEyeStyle: 'rounded',
-         headingFont: 'Montserrat', bodyFont: 'Inter', ctaText: 'Tell us what you think!' } },
+         headingFont: 'Montserrat', bodyFont: 'Inter', ctaText: 'Leave a review!' } },
+  { id: 'smile', name: 'Smiley', tag: 'Scan me :)',
+    d: { shape: 'smiley', engraveMaterial: 'yellow-black', qrStyle: 'rounded', qrEyeStyle: 'rounded',
+         headingFont: 'Montserrat', bodyFont: 'Inter', ctaText: 'Happy? Tell Google!',
+         visible: { qr: true, businessName: true, reviewLabel: false, stars: false, cta: true, instruction: false } } },
+  { id: 'thumbsup', name: 'Big Thumbs Up', tag: 'The like, made real',
+    d: { shape: 'thumb', engraveMaterial: 'silver-black', qrStyle: 'rounded', qrEyeStyle: 'rounded',
+         headingFont: 'Montserrat', bodyFont: 'Inter', ctaText: 'Loved it? Review us!',
+         visible: { qr: true, businessName: true, reviewLabel: true, stars: true, cta: true, instruction: false } } },
+  { id: 'scanhere', name: 'Scan Here', tag: 'Points at the code',
+    d: { shape: 'arrow', engraveMaterial: 'white-black', qrStyle: 'square',
+         headingFont: 'Oswald', bodyFont: 'Inter', ctaText: 'Leave us a review',
+         visible: { qr: true, businessName: true, reviewLabel: true, stars: true, cta: true, instruction: false } } },
+
+  /* ── overnight expansion: candidates for culling ── */
+  { id: 'minimal', name: 'Minimal', tag: 'QR + one line, nothing else',
+    d: { shape: 'portrait', engraveMaterial: 'white-black', qrStyle: 'square',
+         headingFont: 'Inter', bodyFont: 'Inter', ctaText: 'Review us on Google',
+         visible: { qr: true, businessName: false, reviewLabel: false, stars: false, cta: true, instruction: false } } },
+  { id: 'bigqr', name: 'The Code', tag: 'QR is the hero',
+    d: { shape: 'portrait', engraveMaterial: 'white-black', qrStyle: 'square', qrScale: 1.35,
+         headingFont: 'Oswald', bodyFont: 'Inter', ctaText: 'SCAN. RATE. DONE.',
+         visible: { qr: true, businessName: false, reviewLabel: false, stars: false, cta: true, instruction: false } } },
+  { id: 'goldarch', name: 'Golden Arch', tag: 'Wedding-grade elegance',
+    d: { shape: 'arch', engraveMaterial: 'gold-black', qrStyle: 'rounded', qrEyeStyle: 'rounded',
+         headingFont: 'Playfair Display', bodyFont: 'Lato', ctaText: 'We\'d love your review' } },
+  { id: 'copperround', name: 'Copper Lounge', tag: 'Bars & barbers',
+    d: { shape: 'rounded', engraveMaterial: 'copper-black', qrStyle: 'dots', qrEyeStyle: 'rounded',
+         headingFont: 'Fraunces', bodyFont: 'Lato', ctaText: 'Rate your visit' } },
+  { id: 'bluecircle', name: 'Blue Dot', tag: 'Clean & clinical',
+    d: { shape: 'circle', engraveMaterial: 'white-blue', qrStyle: 'dots', qrEyeStyle: 'rounded',
+         headingFont: 'Inter', bodyFont: 'Inter', ctaText: 'How did we do?' } },
+  { id: 'redpin', name: 'Find Us Pin', tag: 'Maps energy',
+    d: { shape: 'pin', engraveMaterial: 'white-red', qrStyle: 'rounded', qrEyeStyle: 'rounded',
+         headingFont: 'Montserrat', bodyFont: 'Inter', ctaText: 'Rate us on Google' } },
+  { id: 'homehouse', name: 'Open Home', tag: 'Real estate & trades',
+    d: { shape: 'house', engraveMaterial: 'white-green', qrStyle: 'square',
+         headingFont: 'Montserrat', bodyFont: 'Inter', ctaText: 'Happy with the service?' } },
+  { id: 'noirspeech', name: 'Noir Bubble', tag: 'Premium speech bubble',
+    d: { shape: 'speech', engraveMaterial: 'black-white', qrStyle: 'rounded', qrEyeStyle: 'rounded',
+         headingFont: 'Playfair Display', bodyFont: 'Lato', ctaText: 'Tell us what you think' } },
+  { id: 'sunny', name: 'Sunny Side', tag: 'Brunch spots',
+    d: { shape: 'circle', engraveMaterial: 'yellow-black', qrStyle: 'rounded', qrEyeStyle: 'rounded',
+         headingFont: 'Caveat', bodyFont: 'Lato', ctaText: 'Loved brekkie? Tell Google!' } },
+  { id: 'euroline', name: 'Euro Plaque', tag: 'Understated luxury',
+    d: { shape: 'landscape', engraveMaterial: 'eurogold-black', qrStyle: 'square',
+         headingFont: 'Playfair Display', bodyFont: 'Inter', ctaText: 'Your opinion, valued.' } },
+  { id: 'aluminium', name: 'Workshop', tag: 'Industrial & honest',
+    d: { shape: 'landscape', engraveMaterial: 'alum-black', qrStyle: 'square',
+         headingFont: 'Oswald', bodyFont: 'Inter', ctaText: 'RATE THE JOB' } },
+  { id: 'rosecircle', name: 'Rose Ring', tag: 'Beauty & bridal',
+    d: { shape: 'circle', engraveMaterial: 'rosegold-white', qrStyle: 'dots', qrEyeStyle: 'rounded',
+         headingFont: 'Dancing Script', bodyFont: 'Lato', ctaText: 'Loved it? Share it ♡' } },
+  { id: 'greentick', name: 'Fresh Check', tag: 'Grocers & markets',
+    d: { shape: 'rounded', engraveMaterial: 'green-white', qrStyle: 'rounded',
+         headingFont: 'Montserrat', bodyFont: 'Inter', ctaText: 'Fresh enough? Review us!' } },
+  { id: 'navypro', name: 'Navy Pro', tag: 'Law, finance, consulting',
+    d: { shape: 'portrait', engraveMaterial: 'blue-white', qrStyle: 'square',
+         headingFont: 'Playfair Display', bodyFont: 'Inter', ctaText: 'Share your experience' } },
+  { id: 'redalert', name: 'Big Red', tag: 'Impossible to miss',
+    d: { shape: 'landscape', engraveMaterial: 'red-white', qrStyle: 'square',
+         headingFont: 'Oswald', bodyFont: 'Inter', ctaText: 'LOVE US? SAY SO.' } },
+  { id: 'silverarch', name: 'Silver Arch', tag: 'Clinics & dental',
+    d: { shape: 'arch', engraveMaterial: 'silver-white', qrStyle: 'dots', qrEyeStyle: 'rounded',
+         headingFont: 'Inter', bodyFont: 'Inter', ctaText: 'How was your visit today?' } },
+  { id: 'happyhour', name: 'Happy Hour', tag: 'Pubs & breweries',
+    d: { shape: 'speech', engraveMaterial: 'yellow-black', qrStyle: 'square',
+         headingFont: 'Oswald', bodyFont: 'Inter', ctaText: 'GOOD BEER? GOOD REVIEW.' } },
+  { id: 'scriptwhite', name: 'Handwritten', tag: 'Boutique & handmade',
+    d: { shape: 'portrait', engraveMaterial: 'white-black', qrStyle: 'dots', qrEyeStyle: 'rounded',
+         headingFont: 'Caveat', bodyFont: 'Lato', ctaText: 'It means the world to us x' } },
+  { id: 'thumbgold', name: 'Gold Like', tag: 'The premium thumbs up',
+    d: { shape: 'thumb', engraveMaterial: 'gold-black', qrStyle: 'rounded', qrEyeStyle: 'rounded',
+         headingFont: 'Montserrat', bodyFont: 'Inter', ctaText: 'Rate us 5 stars',
+         visible: { qr: true, businessName: true, reviewLabel: true, stars: true, cta: true, instruction: false } } },
+  { id: 'smilewhite', name: 'Grin', tag: 'Smiley, minimal',
+    d: { shape: 'smiley', engraveMaterial: 'white-black', qrStyle: 'rounded', qrEyeStyle: 'rounded',
+         headingFont: 'Inter', bodyFont: 'Inter', ctaText: 'Made you smile? Review us!',
+         visible: { qr: true, businessName: true, reviewLabel: false, stars: false, cta: true, instruction: false } } },
+  { id: 'arrowgold', name: 'Golden Arrow', tag: 'Salon-grade wayfinding',
+    d: { shape: 'arrow', engraveMaterial: 'gold-black', qrStyle: 'rounded', qrEyeStyle: 'rounded',
+         headingFont: 'Playfair Display', bodyFont: 'Lato', ctaText: 'Reviews live here',
+         visible: { qr: true, businessName: true, reviewLabel: true, stars: true, cta: true, instruction: false } } },
 ];
 
 export function applyTemplate(design: Design, tplId: string): Design {
@@ -327,8 +419,82 @@ function buildShapePath(ctx: CanvasRenderingContext2D, W: number, H: number, sha
       ctx.moveTo(0, rH); ctx.lineTo(W / 2, 0); ctx.lineTo(W, rH);
       ctx.lineTo(W, H); ctx.lineTo(0, H); break;
     }
+    case 'smiley': {
+      const r = Math.min(W, H) / 2;
+      ctx.ellipse(W / 2, H / 2, r, r, 0, 0, Math.PI * 2); break;
+    }
+    case 'thumb': {
+      // Stylised thumbs-up: fist block (rounded) with a thumb sweeping up-left.
+      const fx = 60, fw = W - 120, fTop = H * 0.40, r = 34;
+      ctx.moveTo(fx + r, fTop);
+      // thumb: rises from the fist's top-left, arcs over, rejoins at top-right
+      ctx.lineTo(fx + fw * 0.18, fTop);
+      ctx.quadraticCurveTo(fx - 26, fTop - 30, fx + fw * 0.10, H * 0.235);
+      ctx.quadraticCurveTo(fx + fw * 0.16, H * 0.10, fx + fw * 0.36, H * 0.075);
+      ctx.quadraticCurveTo(fx + fw * 0.56, H * 0.055, fx + fw * 0.60, H * 0.175);
+      ctx.quadraticCurveTo(fx + fw * 0.62, H * 0.26, fx + fw * 0.52, fTop - 24);
+      ctx.quadraticCurveTo(fx + fw * 0.80, fTop - 18, fx + fw - r, fTop);
+      // fist body
+      ctx.quadraticCurveTo(fx + fw, fTop, fx + fw, fTop + r);
+      ctx.lineTo(fx + fw, H - 40 - r);
+      ctx.quadraticCurveTo(fx + fw, H - 40, fx + fw - r, H - 40);
+      ctx.lineTo(fx + r, H - 40);
+      ctx.quadraticCurveTo(fx, H - 40, fx, H - 40 - r);
+      ctx.lineTo(fx, fTop + r);
+      ctx.quadraticCurveTo(fx, fTop, fx + r, fTop);
+      break;
+    }
+    case 'arrow': {
+      // Downward arrow: shaft on top, head at the bottom pointing at the QR.
+      const shaftW = W * 0.62, sx = (W - shaftW) / 2, headTop = H * 0.52;
+      const r = 26;
+      ctx.moveTo(sx + r, 0);
+      ctx.lineTo(sx + shaftW - r, 0);
+      ctx.quadraticCurveTo(sx + shaftW, 0, sx + shaftW, r);
+      ctx.lineTo(sx + shaftW, headTop);
+      ctx.lineTo(W - 8, headTop);
+      ctx.lineTo(W / 2, H - 6);
+      ctx.lineTo(8, headTop);
+      ctx.lineTo(sx, headTop);
+      ctx.lineTo(sx, r);
+      ctx.quadraticCurveTo(sx, 0, sx + r, 0);
+      break;
+    }
   }
   ctx.closePath();
+}
+
+/**
+ * Shape-specific engraved decorations (smiley eyes/smile, arrow chevrons) —
+ * drawn in the mark colour like any other engraving, after the background.
+ */
+function drawShapeDecoration(ctx: CanvasRenderingContext2D, W: number, H: number, shape: ShapeId, markColor: string) {
+  ctx.save();
+  ctx.fillStyle = markColor;
+  ctx.strokeStyle = markColor;
+  if (shape === 'smiley') {
+    // eyes flanking the QR-nose
+    ctx.beginPath();
+    ctx.ellipse(W * 0.235, H * 0.36, 24, 36, 0, 0, Math.PI * 2);
+    ctx.ellipse(W * 0.765, H * 0.36, 24, 36, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // smile low in the face
+    ctx.lineWidth = 20; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(W / 2, H * 0.46, H * 0.30, Math.PI * 0.30, Math.PI * 0.70);
+    ctx.stroke();
+  } else if (shape === 'arrow') {
+    // chevrons between the text block and the arrow head, pointing at the QR
+    ctx.lineWidth = 13; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const cy of [H * 0.435, H * 0.495]) {
+      ctx.beginPath();
+      ctx.moveTo(W / 2 - 40, cy);
+      ctx.lineTo(W / 2, cy + 24);
+      ctx.lineTo(W / 2 + 40, cy);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }
 
 /* ── backgrounds ── */
@@ -602,6 +768,9 @@ export function renderSign(canvas: HTMLCanvasElement, dIn: Design, opts: RenderO
     buildShapePath(ctx, W, H, d.shape);
     ctx.stroke();
   }
+
+  // Shape-integral engravings (smiley face, arrow chevrons)
+  drawShapeDecoration(ctx, W, H, d.shape, mat ? mat.core : textColor);
 
   const bounds: Bounds = {};
   const align: CanvasTextAlign = isCentered ? 'center' : 'left';
