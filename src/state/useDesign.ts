@@ -16,6 +16,8 @@ function load(): Design {
       const d: Design = { ...defaultDesign(), ...saved, visible: { ...defaultDesign().visible, ...(saved.visible ?? {}) } };
       if (!SHAPE_CONFIGS[d.shape]) { d.shape = 'portrait'; d.layout = getDefaultLayout('portrait'); }
       if (!d.layout) d.layout = getDefaultLayout(d.shape);
+      // Designs saved before materials became mandatory get the default stock.
+      if (!d.engraveMaterial) d.engraveMaterial = defaultDesign().engraveMaterial;
       return d;
     }
   } catch { /* fall through */ }

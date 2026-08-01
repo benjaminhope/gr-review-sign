@@ -41,30 +41,34 @@ export interface EngraveMaterial {
   cap: string;    // face colour (background of the sign)
   core: string;   // revealed colour (all engraved marks: text, QR, stars)
   brushed?: boolean;
+  /** shown in the primary picker; the rest sit behind "more materials" */
+  main?: boolean;
   sku?: string;
 }
 
 export const ENGRAVE_MATERIALS: EngraveMaterial[] = [
   // light cap / dark core — QR engraves dark-on-light, scans directly
-  { id: 'white-black',  name: 'White on Black',            cap: '#F4F3F0', core: '#1A1A1A' },
+  { id: 'white-black',  name: 'White on Black',            cap: '#F4F3F0', core: '#1A1A1A', main: true },
+  { id: 'gold-black',   name: 'Brushed Gold on Black',     cap: '#C9A24B', core: '#1A1A1A', brushed: true, main: true },
+  { id: 'silver-black', name: 'Brushed Silver on Black',   cap: '#C0C1C3', core: '#1A1A1A', brushed: true, main: true },
+  { id: 'copper-black', name: 'Brushed Copper on Black',   cap: '#B0714D', core: '#1A1A1A', brushed: true },
+  { id: 'eurogold-black', name: 'Brushed Euro Gold on Black', cap: '#D3B573', core: '#1A1A1A', brushed: true },
+  { id: 'alum-black',   name: 'Brushed Aluminium on Black', cap: '#AFB2B5', core: '#1A1A1A', brushed: true },
+  { id: 'yellow-black', name: 'Yellow on Black',           cap: '#F2C400', core: '#1A1A1A' },
   { id: 'white-blue',   name: 'White on Blue',             cap: '#F4F3F0', core: '#1B4F9C' },
   { id: 'white-red',    name: 'White on Red',              cap: '#F4F3F0', core: '#C42127' },
   { id: 'white-green',  name: 'White on Green',            cap: '#F4F3F0', core: '#1E7A3C' },
-  { id: 'yellow-black', name: 'Yellow on Black',           cap: '#F2C400', core: '#1A1A1A' },
-  { id: 'gold-black',   name: 'Brushed Gold on Black',     cap: '#C9A24B', core: '#1A1A1A', brushed: true },
-  { id: 'eurogold-black', name: 'Brushed Euro Gold on Black', cap: '#D3B573', core: '#1A1A1A', brushed: true },
-  { id: 'silver-black', name: 'Brushed Silver on Black',   cap: '#C0C1C3', core: '#1A1A1A', brushed: true },
-  { id: 'alum-black',   name: 'Brushed Aluminium on Black', cap: '#AFB2B5', core: '#1A1A1A', brushed: true },
-  { id: 'copper-black', name: 'Brushed Copper on Black',   cap: '#B0714D', core: '#1A1A1A', brushed: true },
-  // dark cap / light core — premium looks, needs reverse engraving for the QR
-  { id: 'black-white',  name: 'Black on White',            cap: '#1A1A1A', core: '#F7F6F3' },
+  // dark cap / light core — premium looks, produced as reverse engrave
+  { id: 'black-white',  name: 'Black on White',            cap: '#1A1A1A', core: '#F7F6F3', main: true },
+  { id: 'gold-white',   name: 'Brushed Gold on White',     cap: '#C9A24B', core: '#F7F6F3', brushed: true },
+  { id: 'rosegold-white', name: 'Brushed Rose Gold on White', cap: '#C98D6F', core: '#F7F6F3', brushed: true, main: true },
+  { id: 'silver-white', name: 'Brushed Silver on White',   cap: '#C0C1C3', core: '#F7F6F3', brushed: true, main: true },
   { id: 'blue-white',   name: 'Blue on White',             cap: '#1B4F9C', core: '#F7F6F3' },
   { id: 'red-white',    name: 'Red on White',              cap: '#C42127', core: '#F7F6F3' },
   { id: 'green-white',  name: 'Green on White',            cap: '#1E7A3C', core: '#F7F6F3' },
-  { id: 'gold-white',   name: 'Brushed Gold on White',     cap: '#C9A24B', core: '#F7F6F3', brushed: true },
-  { id: 'rosegold-white', name: 'Brushed Rose Gold on White', cap: '#C98D6F', core: '#F7F6F3', brushed: true },
-  { id: 'silver-white', name: 'Brushed Silver on White',   cap: '#C0C1C3', core: '#F7F6F3', brushed: true },
 ];
+
+export const DEFAULT_MATERIAL = 'white-black';
 
 export type ElementKey = 'qr' | 'businessName' | 'reviewLabel' | 'stars' | 'cta' | 'instruction';
 export type Point = { x: number; y: number };
@@ -103,7 +107,8 @@ export interface Design {
 
 export function engraveMaterialFor(d: Design): EngraveMaterial | null {
   if (!d.engraveMaterial) return null;
-  return ENGRAVE_MATERIALS.find((m) => m.id === d.engraveMaterial) ?? null;
+  return ENGRAVE_MATERIALS.find((m) => m.id === d.engraveMaterial)
+    ?? ENGRAVE_MATERIALS.find((m) => m.id === DEFAULT_MATERIAL)!;
 }
 
 /** Two-tone view of a design as the laser will actually produce it. */
@@ -118,6 +123,11 @@ export function engraveDesign(d: Design, mat: EngraveMaterial): Design {
     qrPanel: false,
     engraveMaterial: d.engraveMaterial,
   };
+}
+
+/** Engraving is always core-on-cap; scan checks and previews rely on this. */
+export function materialSwatch(mat: EngraveMaterial): { face: string; mark: string } {
+  return { face: mat.cap, mark: mat.core };
 }
 
 /* ── colour helpers ── */
@@ -215,52 +225,45 @@ export function defaultDesign(): Design {
     reviewUrl: '', instagram: '', facebook: '', socialPad: 40,
     layout: null,
     visible: { qr: true, businessName: true, reviewLabel: true, stars: true, cta: true, instruction: true },
-    engraveMaterial: null,
+    engraveMaterial: DEFAULT_MATERIAL,
   };
 }
 
 /* ── templates ── */
 export interface Template { id: string; name: string; tag: string; d: Partial<Design> }
 
+/* Templates are shape + typography + wording + material. Colour comes only
+   from the engraving material — what we sell is what the laser makes. */
 export const TEMPLATES: Template[] = [
   { id: 'classic', name: 'Classic Counter', tag: 'Clean & universal',
-    d: { shape: 'portrait', bgType: 'solid', bgColor: '#FFFFFF', qrColor: '#141414', qrStyle: 'square',
+    d: { shape: 'portrait', engraveMaterial: 'white-black', qrStyle: 'square',
          headingFont: 'Montserrat', bodyFont: 'Inter', ctaText: 'Leave us a Google review!' } },
-  { id: 'chalk', name: 'Espresso Chalk', tag: 'Cafés & bakeries',
-    d: { shape: 'portrait', bgType: 'chalk', bgColor: '#2B2B28', qrColor: '#232320', qrStyle: 'rounded', qrEyeStyle: 'rounded',
-         qrPanel: true, qrPanelColor: '#F5F1E8', headingFont: 'Caveat', bodyFont: 'Lato',
-         ctaText: 'Enjoyed your coffee? Tell Google!' } },
-  { id: 'goldblack', name: 'Gold on Black', tag: 'Salons & bars',
-    d: { shape: 'rounded', bgType: 'solid', bgColor: '#161513', textColor: '#D4AF37', starColor: '#D4AF37',
-         qrColor: '#161513', qrPanel: true, qrPanelColor: '#F3EAD3', qrStyle: 'rounded', qrEyeStyle: 'rounded',
+  { id: 'chalk', name: 'Espresso', tag: 'Cafés & bakeries',
+    d: { shape: 'portrait', engraveMaterial: 'copper-black', qrStyle: 'rounded', qrEyeStyle: 'rounded',
+         headingFont: 'Caveat', bodyFont: 'Lato', ctaText: 'Enjoyed your coffee? Tell Google!' } },
+  { id: 'goldblack', name: 'Gold Standard', tag: 'Salons & bars',
+    d: { shape: 'rounded', engraveMaterial: 'gold-black', qrStyle: 'rounded', qrEyeStyle: 'rounded',
          headingFont: 'Playfair Display', bodyFont: 'Lato', ctaText: 'Loved your visit? Share it.' } },
-  { id: 'mint', name: 'Fresh Mint', tag: 'Clinics & studios',
-    d: { shape: 'arch', bgType: 'gradient', bgColor: '#DFF5EC', bgColor2: '#B8E6D3', bgAngle: 160,
-         qrColor: '#0E5C45', qrStyle: 'dots', qrEyeStyle: 'rounded', textColor: '#0E5C45', starColor: '#0E9B72',
+  { id: 'mint', name: 'Clinic Arch', tag: 'Clinics & studios',
+    d: { shape: 'arch', engraveMaterial: 'white-green', qrStyle: 'dots', qrEyeStyle: 'rounded',
          headingFont: 'Fraunces', bodyFont: 'Inter', ctaText: 'How was your appointment?' } },
   { id: 'trade', name: 'Bold Trade', tag: 'Trades & services',
-    d: { shape: 'landscape', bgType: 'solid', bgColor: '#FFC821', qrColor: '#141414', qrStyle: 'square',
-         headingFont: 'Oswald', bodyFont: 'Inter', textColor: '#141414',
-         ctaText: 'Happy with the job? Review us!' } },
-  { id: 'blush', name: 'Soft Blush', tag: 'Beauty & boutique',
-    d: { shape: 'arch', bgType: 'gradient', bgColor: '#FBE6E3', bgColor2: '#F5C8C2', bgAngle: 200,
-         qrColor: '#7A3B34', qrStyle: 'rounded', qrEyeStyle: 'rounded', textColor: '#7A3B34', starColor: '#C9705F',
+    d: { shape: 'landscape', engraveMaterial: 'yellow-black', qrStyle: 'square',
+         headingFont: 'Oswald', bodyFont: 'Inter', ctaText: 'Happy with the job? Review us!' } },
+  { id: 'blush', name: 'Rose Arch', tag: 'Beauty & boutique',
+    d: { shape: 'arch', engraveMaterial: 'rosegold-white', qrStyle: 'rounded', qrEyeStyle: 'rounded',
          headingFont: 'Playfair Display', bodyFont: 'Lato', ctaText: 'Loved it? Leave us a review ♡' } },
-  { id: 'ocean', name: 'Ocean', tag: 'Bold & trustworthy',
-    d: { shape: 'rounded', bgType: 'gradient', bgColor: '#1565C0', bgColor2: '#0D3D77', bgAngle: 145,
-         qrColor: '#0D3D77', qrPanel: true, qrPanelColor: '#FFFFFF', qrStyle: 'rounded',
+  { id: 'ocean', name: 'Navy', tag: 'Bold & trustworthy',
+    d: { shape: 'rounded', engraveMaterial: 'white-blue', qrStyle: 'rounded',
          headingFont: 'Montserrat', bodyFont: 'Inter', ctaText: 'Scan to share your experience' } },
-  { id: 'timber', name: 'Timber', tag: 'Engraved look',
-    d: { shape: 'portrait', bgType: 'wood', bgColor: '#C8853A', qrColor: '#2A1A08', qrStyle: 'square',
-         textColor: '#2A1A08', starColor: '#2A1A08',
+  { id: 'timber', name: 'Silverline', tag: 'Modern professional',
+    d: { shape: 'portrait', engraveMaterial: 'silver-black', qrStyle: 'square',
          headingFont: 'Fraunces', bodyFont: 'Lato', ctaText: 'Leave us a Google review!' } },
-  { id: 'midnight', name: 'Midnight Dots', tag: 'Modern & minimal',
-    d: { shape: 'portrait', bgType: 'gradient', bgColor: '#1B2240', bgColor2: '#0D1226', bgAngle: 170,
-         qrColor: '#1B2240', qrPanel: true, qrPanelColor: '#FFFFFF', qrStyle: 'dots', qrEyeStyle: 'rounded',
+  { id: 'midnight', name: 'Midnight', tag: 'Modern & minimal',
+    d: { shape: 'portrait', engraveMaterial: 'black-white', qrStyle: 'dots', qrEyeStyle: 'rounded',
          headingFont: 'Inter', bodyFont: 'Inter', ctaText: '30 seconds. Means the world.' } },
   { id: 'pop', name: 'Speech Pop', tag: 'Playful & friendly',
-    d: { shape: 'speech', bgType: 'solid', bgColor: '#FFFFFF', qrColor: '#D93025', qrStyle: 'rounded', qrEyeStyle: 'rounded',
-         textColor: '#202124', starColor: '#FBBC04',
+    d: { shape: 'speech', engraveMaterial: 'white-red', qrStyle: 'rounded', qrEyeStyle: 'rounded',
          headingFont: 'Montserrat', bodyFont: 'Inter', ctaText: 'Tell us what you think!' } },
 ];
 
@@ -363,6 +366,59 @@ function drawChalk(ctx: CanvasRenderingContext2D, W: number, H: number, base: st
   }
   ctx.restore();
 }
+/**
+ * Anisotropic brushed-metal cap: dense fine horizontal streaks in light and
+ * dark, broken into segments (real brushing isn't continuous), plus two soft
+ * diagonal sheen bands. Deterministic PRNG so re-renders are stable.
+ */
+function drawBrushedCap(ctx: CanvasRenderingContext2D, W: number, H: number, cap: string) {
+  let seed = 42;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  ctx.save();
+
+  // fine streaks — alternating lighter/darker than the cap
+  for (let i = 0; i < H * 1.6; i++) {
+    const y = rnd() * H;
+    const light = rnd() < 0.5;
+    ctx.globalAlpha = 0.02 + rnd() * 0.055;
+    ctx.strokeStyle = light ? '#FFFFFF' : '#000000';
+    ctx.lineWidth = 0.5 + rnd() * 0.5;
+    // broken segments along the stroke
+    let x = -rnd() * 60;
+    ctx.beginPath();
+    while (x < W) {
+      const len = 30 + rnd() * 140;
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + len, y + (rnd() - 0.5) * 0.8);
+      x += len + rnd() * 40;
+    }
+    ctx.stroke();
+  }
+
+  // soft diagonal sheen bands (what makes metal read as metal)
+  const sheen = ctx.createLinearGradient(0, 0, W, H);
+  sheen.addColorStop(0.0, 'rgba(255,255,255,0)');
+  sheen.addColorStop(0.28, 'rgba(255,255,255,0.13)');
+  sheen.addColorStop(0.42, 'rgba(255,255,255,0)');
+  sheen.addColorStop(0.62, 'rgba(0,0,0,0.06)');
+  sheen.addColorStop(0.78, 'rgba(255,255,255,0.09)');
+  sheen.addColorStop(1.0, 'rgba(255,255,255,0)');
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = sheen;
+  ctx.fillRect(0, 0, W, H);
+
+  // vignette so edges read like a solid slab
+  const edge = ctx.createLinearGradient(0, 0, 0, H);
+  edge.addColorStop(0, 'rgba(255,255,255,0.07)');
+  edge.addColorStop(0.08, 'rgba(255,255,255,0)');
+  edge.addColorStop(0.92, 'rgba(0,0,0,0)');
+  edge.addColorStop(1, 'rgba(0,0,0,0.08)');
+  ctx.fillStyle = edge;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+  void cap;
+}
+
 function drawBackground(ctx: CanvasRenderingContext2D, W: number, H: number, d: Design) {
   if (d.bgType === 'wood') return drawWood(ctx, W, H, d.bgColor);
   if (d.bgType === 'chalk') return drawChalk(ctx, W, H, d.bgColor);
@@ -535,17 +591,7 @@ export function renderSign(canvas: HTMLCanvasElement, dIn: Design, opts: RenderO
   buildShapePath(ctx, W, H, d.shape);
   ctx.clip();
   drawBackground(ctx, W, H, d);
-  if (mat?.brushed) {
-    // subtle horizontal brush strokes on metallic-laminate caps
-    ctx.save();
-    for (let y = 0; y < H; y += 2) {
-      ctx.globalAlpha = 0.025 + ((y * 7919) % 13) / 13 * 0.035;
-      ctx.strokeStyle = relLum(mat.cap) > 0.4 ? '#FFFFFF' : '#000000';
-      ctx.lineWidth = 0.6;
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    }
-    ctx.restore();
-  }
+  if (mat?.brushed) drawBrushedCap(ctx, W, H, mat.cap);
   ctx.strokeStyle = isDark(bgRef) ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.14)';
   ctx.lineWidth = 5;
   buildShapePath(ctx, W, H, d.shape);

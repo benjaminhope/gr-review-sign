@@ -10,12 +10,9 @@ import SignCanvas from '../components/SignCanvas';
 import { BrandMark } from '../components/Chrome';
 import { PricingRow } from '../components/PricingCards';
 import { demoDesign } from '../components/TemplateGallery';
+import { lazy, Suspense } from 'react';
 
-const PALETTE = [
-  '#FFFFFF', '#F5F1E8', '#FBE6E3', '#DFF5EC', '#CDE6F7', '#FDF3D0', '#EFE6F7',
-  '#141414', '#2B2B28', '#1B2240', '#0E5C45', '#1565C0', '#7B2D8B', '#8C1D18',
-  '#E8630A', '#FFC821', '#C8853A', '#D4AF37', '#E91E8C', '#00897B', '#5D4037',
-];
+const Sign3D = lazy(() => import('../components/Sign3D'));
 
 const CTA_PRESETS = [
   'Leave us a Google review!',
@@ -62,6 +59,8 @@ export default function Designer() {
   const [params] = useSearchParams();
   const [selected, setSelected] = useState<ElementKey | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [showAllMats, setShowAllMats] = useState(false);
+  const [view3D, setView3D] = useState(false);
   const [toast, setToast] = useState('');
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -330,63 +329,27 @@ export default function Designer() {
             </div>
           </Section>
 
-          <Section title="Background & colours" defaultOpen icon={<span>🎨</span>}>
-            <div className="ctl-label">Background style</div>
-            <div className="seg-row">
-              {(['solid', 'gradient', 'chalk', 'wood'] as const).map((t) => (
-                <button key={t} className={seg(design.bgType === t)}
-                  onClick={() => {
-                    const p: Partial<Design> = { bgType: t };
-                    if (t === 'chalk' && design.bgColor === '#FFFFFF') p.bgColor = '#2B2B28';
-                    if (t === 'wood' && ['#FFFFFF', '#2B2B28'].includes(design.bgColor)) p.bgColor = '#C8853A';
-                    patch(p);
-                  }}>
-                  {t === 'wood' ? 'Timber' : t[0].toUpperCase() + t.slice(1)}
+          <Section title="Material" defaultOpen icon={<span>◈</span>}>
+            <p className="hint" style={{ marginTop: 0 }}>
+              Every sign is cut from 2-ply engraving acrylic — the laser reveals the core colour
+              through the face. What you see is what gets made.
+            </p>
+            <div className="mat-grid">
+              {ENGRAVE_MATERIALS.filter((m) => m.main || showAllMats).map((m) => (
+                <button key={m.id} title={m.name}
+                  className={`mat-chip${design.engraveMaterial === m.id ? ' selected' : ''}`}
+                  onClick={() => patch({ engraveMaterial: m.id })}>
+                  <span className={`mat-cap${m.brushed ? ' brushed' : ''}`} style={{ background: m.cap }}>
+                    <span className="mat-core" style={{ background: m.core }} />
+                  </span>
+                  <span className="mat-name">{m.name.replace('Brushed ', '')}</span>
                 </button>
               ))}
             </div>
-
-            <div className="ctl-label">Palette</div>
-            <div className="swatch-grid">
-              {PALETTE.map((hex) => (
-                <button key={hex} className={`swatch${design.bgColor === hex ? ' selected' : ''}`}
-                  style={{ background: hex }} title={hex} onClick={() => patch({ bgColor: hex })} />
-              ))}
-            </div>
-
-            <div className="color-row" style={{ marginTop: 10 }}>
-              <input type="color" className="color-input" value={design.bgColor} onChange={(e) => patch({ bgColor: e.target.value })} />
-              <span>Base colour</span>
-            </div>
-            {design.bgType === 'gradient' && (
-              <>
-                <div className="color-row" style={{ marginTop: 8 }}>
-                  <input type="color" className="color-input" value={design.bgColor2} onChange={(e) => patch({ bgColor2: e.target.value })} />
-                  <span>Second colour</span>
-                </div>
-                <div className="range-row" style={{ marginTop: 8 }}>
-                  <input type="range" min={0} max={360} step={5} value={design.bgAngle}
-                    onChange={(e) => patch({ bgAngle: +e.target.value })} />
-                  <output>{design.bgAngle}°</output>
-                </div>
-              </>
-            )}
-
-            <div className="ctl-label">Text colour</div>
-            <div className="seg-row">
-              <button className={seg(design.textColor === 'auto')} onClick={() => patch({ textColor: 'auto' })}>Auto</button>
-              <button className={seg(design.textColor !== 'auto')} onClick={() => patch({ textColor: '#141414' })}>Custom</button>
-            </div>
-            {design.textColor !== 'auto' && (
-              <div className="color-row" style={{ marginTop: 8 }}>
-                <input type="color" className="color-input" value={design.textColor} onChange={(e) => patch({ textColor: e.target.value })} />
-                <span>Text</span>
-              </div>
-            )}
-            <div className="color-row" style={{ marginTop: 8 }}>
-              <input type="color" className="color-input" value={design.starColor} onChange={(e) => patch({ starColor: e.target.value })} />
-              <span>Stars</span>
-            </div>
+            <button className="btn btn-ghost btn-sm" style={{ width: '100%', marginTop: 10 }}
+              onClick={() => setShowAllMats((v) => !v)}>
+              {showAllMats ? 'Show main materials' : `All ${ENGRAVE_MATERIALS.length} materials`}
+            </button>
           </Section>
 
           <Section title="QR code style" defaultOpen icon={<span>▩</span>}>
@@ -406,23 +369,6 @@ export default function Designer() {
                 </button>
               ))}
             </div>
-            <div className="ctl-label">Colour &amp; backing</div>
-            <div className="color-row">
-              <input type="color" className="color-input" value={design.qrColor} onChange={(e) => patch({ qrColor: e.target.value })} />
-              <span>QR colour</span>
-            </div>
-            <div className="el-row" style={{ marginTop: 10, borderBottom: 'none' }}>
-              <span>White backing panel</span>
-              <button className={`el-toggle${design.qrPanel ? '' : ' el-off'}`} onClick={() => patch({ qrPanel: !design.qrPanel })}>
-                {design.qrPanel ? 'On' : 'Off'}
-              </button>
-            </div>
-            {design.qrPanel && (
-              <div className="color-row">
-                <input type="color" className="color-input" value={design.qrPanelColor} onChange={(e) => patch({ qrPanelColor: e.target.value })} />
-                <span>Panel colour</span>
-              </div>
-            )}
             <div className="ctl-label">Size</div>
             <div className="range-row">
               <input type="range" min={0.7} max={1.35} step={0.05} value={design.qrScale}
@@ -473,38 +419,6 @@ export default function Designer() {
             </div>
           </Section>
 
-          <Section title="Engraved acrylic preview" icon={<span>◈</span>}>
-            <p className="hint" style={{ marginTop: 0 }}>
-              The $79 engraved sign is laser-cut from 2-ply acrylic: engraving reveals the core colour,
-              so it's always two-tone. Pick a material to preview exactly what the laser produces.
-            </p>
-            <div className="el-row" style={{ borderBottom: 'none' }}>
-              <span>Preview as engraved</span>
-              <button className={`el-toggle${design.engraveMaterial ? '' : ' el-off'}`}
-                onClick={() => patch({ engraveMaterial: design.engraveMaterial ? null : 'white-black' })}>
-                {design.engraveMaterial ? 'On' : 'Off'}
-              </button>
-            </div>
-            {design.engraveMaterial && (
-              <>
-                <div className="ctl-label">Material</div>
-                <div className="mat-grid">
-                  {ENGRAVE_MATERIALS.map((m) => (
-                    <button key={m.id} title={m.name}
-                      className={`mat-chip${design.engraveMaterial === m.id ? ' selected' : ''}`}
-                      onClick={() => patch({ engraveMaterial: m.id })}>
-                      <span className="mat-cap" style={{ background: m.cap }}>
-                        <span className="mat-core" style={{ background: m.core }} />
-                      </span>
-                      <span className="mat-name">{m.name.replace('Brushed ', '')}</span>
-                    </button>
-                  ))}
-                </div>
-                <p className="hint">Colour, gradient and font choices still apply to the digital &amp; print files — engraving uses the two-tone above.</p>
-              </>
-            )}
-          </Section>
-
           <Section title="Show / hide elements" icon={<span>👁</span>}>
             {(Object.keys(EL_NAMES) as ElementKey[]).map((key) => (
               <div className="el-row" key={key}>
@@ -528,7 +442,12 @@ export default function Designer() {
 
         <div className="stage">
           <div className="stage-toolbar">
-            <span className="tlabel">{selected ? EL_NAMES[selected] : 'Click an element to select it'}</span>
+            <div className="seg-row" style={{ padding: 2 }}>
+              <button className={seg(!view3D)} style={{ padding: '5px 14px' }} onClick={() => setView3D(false)}>Design</button>
+              <button className={seg(view3D)} style={{ padding: '5px 14px' }} onClick={() => { setView3D(true); setSelected(null); }}>3D preview</button>
+            </div>
+            <div className="align-sep" />
+            <span className="tlabel">{view3D ? 'Drag to rotate · scroll to zoom' : selected ? EL_NAMES[selected] : 'Click an element to select it'}</span>
             {['left', 'hcenter', 'right', 'top', 'vcenter', 'bottom'].map((dir) => (
               <button key={dir} className="align-btn" title={dir} disabled={!selected} onClick={() => alignSelected(dir)}>
                 {{ left: '⇤', hcenter: '⇹', right: '⇥', top: '⤒', vcenter: '⇳', bottom: '⤓' }[dir]}
@@ -543,12 +462,24 @@ export default function Designer() {
               }}>✕</button>
           </div>
 
-          <div className="sign-holder"
-            onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
-            <SignCanvas design={design} scale={3} selection={selected} canvasRef={canvasRef}
-              onBounds={(b) => { boundsRef.current = b; }} />
-          </div>
-          <p className="drag-hint">Drag any element on the sign to reposition it · changes save automatically in this browser</p>
+          {view3D ? (
+            <div className="sign3d-holder">
+              <Suspense fallback={<div className="sign3d-loading">Loading 3D preview…</div>}>
+                <Sign3D design={design} />
+              </Suspense>
+            </div>
+          ) : (
+            <div className="sign-holder"
+              onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
+              <SignCanvas design={design} scale={3} selection={selected} canvasRef={canvasRef}
+                onBounds={(b) => { boundsRef.current = b; }} />
+            </div>
+          )}
+          <p className="drag-hint">
+            {view3D
+              ? 'This is the engraved sign as it ships — rotate it to check every angle'
+              : 'Drag any element on the sign to reposition it · changes save automatically in this browser'}
+          </p>
 
           <div className="stage-cta">
             <button className="btn btn-ghost" onClick={freeDownload}>Download free preview (watermarked)</button>
