@@ -24,15 +24,14 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    // Inject the Google API key into pages that use Places search
-    if (['/', '/index.html', '/design.html'].includes(url.pathname)) {
-      const path = url.pathname === '/' ? '/index.html' : url.pathname;
-      const response = await env.ASSETS.fetch(new URL(path, url));
-      let html = await response.text();
-      html = html.replace('{{GOOGLE_API_KEY}}', env.GOOGLE_PLACES_API_KEY || '');
-      return new Response(html, {
-        headers: { 'content-type': 'text/html;charset=UTF-8' },
-      });
+    // The SPA loads Google Places via this stub so the API key never ships in
+    // the bundle and can rotate without a rebuild.
+    if (url.pathname === '/api/places-script') {
+      const key = env.GOOGLE_PLACES_API_KEY || '';
+      const body = key
+        ? `(function(){var s=document.createElement('script');s.src='https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&callback=initPlacesAPI';s.async=true;document.head.appendChild(s);})();`
+        : `if(window.initPlacesAPI)try{window.initPlacesAPI()}catch(e){} /* no key configured */`;
+      return new Response(body, { headers: { 'content-type': 'application/javascript' } });
     }
 
     // POST /api/create-checkout-session
@@ -65,8 +64,8 @@ export default {
             shipping_address_collection: { allowed_countries: ['AU'] },
             phone_number_collection: { enabled: true },
           } : {}),
-          success_url: `${baseUrl}/success.html?session_id={CHECKOUT_SESSION_ID}&tier=${tier}`,
-          cancel_url: `${baseUrl}/cancel.html`,
+          success_url: `${baseUrl}/success?session_id={CHECKOUT_SESSION_ID}&tier=${tier}`,
+          cancel_url: `${baseUrl}/cancel`,
           metadata: {
             businessName: businessName || '',
             placeId: placeId || '',
