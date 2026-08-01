@@ -289,6 +289,18 @@ canvas { display: block; }
 .shape-cell:hover { border-color: var(--ink-3); }
 .shape-cell.active { border-color: var(--accent); color: var(--accent-dk); background: var(--accent-soft); }
 
+/* engrave material picker */
+.mat-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.mat-chip {
+  border: 1.5px solid var(--line); border-radius: 10px; background: var(--card); padding: 8px 4px 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer;
+}
+.mat-chip:hover { border-color: var(--ink-3); }
+.mat-chip.selected { border-color: var(--accent); outline: 1.5px solid var(--accent); }
+.mat-cap { width: 100%; height: 26px; border-radius: 6px; border: 1px solid rgba(0,0,0,.12); display: grid; place-items: center; }
+.mat-core { width: 55%; height: 8px; border-radius: 3px; }
+.mat-name { font-size: 9.5px; font-weight: 600; color: var(--ink-2); text-align: center; line-height: 1.2; }
+
 /* elements list */
 .el-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed var(--line); }
 .el-row:last-child { border-bottom: none; }

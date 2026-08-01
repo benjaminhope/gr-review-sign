@@ -38,7 +38,7 @@ export default {
     if (url.pathname === '/api/create-checkout-session' && request.method === 'POST') {
       let body;
       try { body = await request.json(); } catch { return json({ error: 'Bad request' }, 400); }
-      const { tier, businessName, placeId } = body;
+      const { tier, businessName, placeId, engraveMaterial } = body;
 
       const product = TIERS[tier];
       if (!product) return json({ error: 'Invalid tier' }, 400);
@@ -70,6 +70,8 @@ export default {
             businessName: businessName || '',
             placeId: placeId || '',
             tier,
+            // Which 2-ply RowMAX stock to cut — fulfilment reads this
+            engraveMaterial: engraveMaterial || '',
           },
         });
 

@@ -28,6 +28,44 @@ export const SIGN_FONTS = [
   'Lato', 'Dancing Script', 'Fraunces', 'Caveat',
 ] as const;
 
+/* ── engraving materials ──
+   RowMAX 2-ply laser laminate (Koenig Machinery, 1.6mm): engraving the cap
+   reveals the core. QR modules are engraved, so modules render in core colour
+   on a cap-colour face. Combos with a light cap + dark core scan directly;
+   dark-cap/light-core is inverted and sold as "reverse engrave" (we clear the
+   background field instead) — the preview and scan check model the direct
+   engrave, so inverted combos surface as warnings by design. */
+export interface EngraveMaterial {
+  id: string;
+  name: string;
+  cap: string;    // face colour (background of the sign)
+  core: string;   // revealed colour (all engraved marks: text, QR, stars)
+  brushed?: boolean;
+  sku?: string;
+}
+
+export const ENGRAVE_MATERIALS: EngraveMaterial[] = [
+  // light cap / dark core — QR engraves dark-on-light, scans directly
+  { id: 'white-black',  name: 'White on Black',            cap: '#F4F3F0', core: '#1A1A1A' },
+  { id: 'white-blue',   name: 'White on Blue',             cap: '#F4F3F0', core: '#1B4F9C' },
+  { id: 'white-red',    name: 'White on Red',              cap: '#F4F3F0', core: '#C42127' },
+  { id: 'white-green',  name: 'White on Green',            cap: '#F4F3F0', core: '#1E7A3C' },
+  { id: 'yellow-black', name: 'Yellow on Black',           cap: '#F2C400', core: '#1A1A1A' },
+  { id: 'gold-black',   name: 'Brushed Gold on Black',     cap: '#C9A24B', core: '#1A1A1A', brushed: true },
+  { id: 'eurogold-black', name: 'Brushed Euro Gold on Black', cap: '#D3B573', core: '#1A1A1A', brushed: true },
+  { id: 'silver-black', name: 'Brushed Silver on Black',   cap: '#C0C1C3', core: '#1A1A1A', brushed: true },
+  { id: 'alum-black',   name: 'Brushed Aluminium on Black', cap: '#AFB2B5', core: '#1A1A1A', brushed: true },
+  { id: 'copper-black', name: 'Brushed Copper on Black',   cap: '#B0714D', core: '#1A1A1A', brushed: true },
+  // dark cap / light core — premium looks, needs reverse engraving for the QR
+  { id: 'black-white',  name: 'Black on White',            cap: '#1A1A1A', core: '#F7F6F3' },
+  { id: 'blue-white',   name: 'Blue on White',             cap: '#1B4F9C', core: '#F7F6F3' },
+  { id: 'red-white',    name: 'Red on White',              cap: '#C42127', core: '#F7F6F3' },
+  { id: 'green-white',  name: 'Green on White',            cap: '#1E7A3C', core: '#F7F6F3' },
+  { id: 'gold-white',   name: 'Brushed Gold on White',     cap: '#C9A24B', core: '#F7F6F3', brushed: true },
+  { id: 'rosegold-white', name: 'Brushed Rose Gold on White', cap: '#C98D6F', core: '#F7F6F3', brushed: true },
+  { id: 'silver-white', name: 'Brushed Silver on White',   cap: '#C0C1C3', core: '#F7F6F3', brushed: true },
+];
+
 export type ElementKey = 'qr' | 'businessName' | 'reviewLabel' | 'stars' | 'cta' | 'instruction';
 export type Point = { x: number; y: number };
 export type Layout = Record<ElementKey, Point>;
@@ -59,6 +97,27 @@ export interface Design {
   socialPad: number;
   layout: Layout | null;
   visible: Record<ElementKey, boolean>;
+  /** Engraved-tier preview: id from ENGRAVE_MATERIALS, or null for print/digital. */
+  engraveMaterial: string | null;
+}
+
+export function engraveMaterialFor(d: Design): EngraveMaterial | null {
+  if (!d.engraveMaterial) return null;
+  return ENGRAVE_MATERIALS.find((m) => m.id === d.engraveMaterial) ?? null;
+}
+
+/** Two-tone view of a design as the laser will actually produce it. */
+export function engraveDesign(d: Design, mat: EngraveMaterial): Design {
+  return {
+    ...d,
+    bgType: 'solid',
+    bgColor: mat.cap,
+    textColor: mat.core,
+    starColor: mat.core,
+    qrColor: mat.core,
+    qrPanel: false,
+    engraveMaterial: d.engraveMaterial,
+  };
 }
 
 /* ── colour helpers ── */
@@ -92,6 +151,13 @@ function qrBackingColor(d: Design): string {
 
 export type ScanLevel = 'ok' | 'warn' | 'bad';
 export function qrScanCheck(d: Design): { level: ScanLevel; msg: string } {
+  const mat = engraveMaterialFor(d);
+  if (mat) {
+    // Engraving physics: modules take the core colour on the cap face.
+    const inverted = relLum(mat.core) > relLum(mat.cap);
+    if (inverted) return { level: 'warn', msg: `${mat.name} engraves a light QR on a dark face — we produce this as a reverse engrave (background cleared) so it scans. The preview shows the direct engrave.` };
+    return { level: 'ok', msg: `${mat.name}: engraves dark-on-light. Scans reliably.` };
+  }
   const back = qrBackingColor(d);
   const ratio = contrastRatio(d.qrColor, back);
   const inverted = relLum(d.qrColor) > relLum(back);
@@ -149,6 +215,7 @@ export function defaultDesign(): Design {
     reviewUrl: '', instagram: '', facebook: '', socialPad: 40,
     layout: null,
     visible: { qr: true, businessName: true, reviewLabel: true, stars: true, cta: true, instruction: true },
+    engraveMaterial: null,
   };
 }
 
@@ -440,7 +507,10 @@ export interface RenderOpts {
   selection?: ElementKey | null;
 }
 
-export function renderSign(canvas: HTMLCanvasElement, d: Design, opts: RenderOpts = {}): Bounds {
+export function renderSign(canvas: HTMLCanvasElement, dIn: Design, opts: RenderOpts = {}): Bounds {
+  // Engraved preview: collapse the design to the two-tone the laser produces.
+  const mat = engraveMaterialFor(dIn);
+  const d = mat ? engraveDesign(dIn, mat) : dIn;
   const scale = opts.scale ?? 3;
   const cfg = SHAPE_CONFIGS[d.shape] ?? SHAPE_CONFIGS.portrait;
   const { W, H } = cfg;
@@ -465,6 +535,17 @@ export function renderSign(canvas: HTMLCanvasElement, d: Design, opts: RenderOpt
   buildShapePath(ctx, W, H, d.shape);
   ctx.clip();
   drawBackground(ctx, W, H, d);
+  if (mat?.brushed) {
+    // subtle horizontal brush strokes on metallic-laminate caps
+    ctx.save();
+    for (let y = 0; y < H; y += 2) {
+      ctx.globalAlpha = 0.025 + ((y * 7919) % 13) / 13 * 0.035;
+      ctx.strokeStyle = relLum(mat.cap) > 0.4 ? '#FFFFFF' : '#000000';
+      ctx.lineWidth = 0.6;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    }
+    ctx.restore();
+  }
   ctx.strokeStyle = isDark(bgRef) ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.14)';
   ctx.lineWidth = 5;
   buildShapePath(ctx, W, H, d.shape);

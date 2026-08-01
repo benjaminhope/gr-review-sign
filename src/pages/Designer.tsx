@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
-  Bounds, Design, ElementKey, SHAPE_CONFIGS, ShapeId, SIGN_FONTS, TEMPLATES,
+  Bounds, Design, ElementKey, ENGRAVE_MATERIALS, SHAPE_CONFIGS, ShapeId, SIGN_FONTS, TEMPLATES,
   applyTemplate as applyTemplateCore, getDefaultLayout,
   qrScanCheck, renderSign,
 } from '../lib/render-core';
@@ -227,7 +227,12 @@ export default function Designer() {
     try {
       const res = await fetch('/api/create-checkout-session', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tier, businessName: design.businessName, placeId: placeIdRef.current }),
+        body: JSON.stringify({
+          tier,
+          businessName: design.businessName,
+          placeId: placeIdRef.current,
+          engraveMaterial: tier === 'engraved' ? (design.engraveMaterial ?? 'white-black') : undefined,
+        }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
@@ -466,6 +471,38 @@ export default function Designer() {
                 onChange={(e) => patch({ socialPad: +e.target.value })} />
               <output>{design.socialPad}</output>
             </div>
+          </Section>
+
+          <Section title="Engraved acrylic preview" icon={<span>◈</span>}>
+            <p className="hint" style={{ marginTop: 0 }}>
+              The $79 engraved sign is laser-cut from 2-ply acrylic: engraving reveals the core colour,
+              so it's always two-tone. Pick a material to preview exactly what the laser produces.
+            </p>
+            <div className="el-row" style={{ borderBottom: 'none' }}>
+              <span>Preview as engraved</span>
+              <button className={`el-toggle${design.engraveMaterial ? '' : ' el-off'}`}
+                onClick={() => patch({ engraveMaterial: design.engraveMaterial ? null : 'white-black' })}>
+                {design.engraveMaterial ? 'On' : 'Off'}
+              </button>
+            </div>
+            {design.engraveMaterial && (
+              <>
+                <div className="ctl-label">Material</div>
+                <div className="mat-grid">
+                  {ENGRAVE_MATERIALS.map((m) => (
+                    <button key={m.id} title={m.name}
+                      className={`mat-chip${design.engraveMaterial === m.id ? ' selected' : ''}`}
+                      onClick={() => patch({ engraveMaterial: m.id })}>
+                      <span className="mat-cap" style={{ background: m.cap }}>
+                        <span className="mat-core" style={{ background: m.core }} />
+                      </span>
+                      <span className="mat-name">{m.name.replace('Brushed ', '')}</span>
+                    </button>
+                  ))}
+                </div>
+                <p className="hint">Colour, gradient and font choices still apply to the digital &amp; print files — engraving uses the two-tone above.</p>
+              </>
+            )}
           </Section>
 
           <Section title="Show / hide elements" icon={<span>👁</span>}>
