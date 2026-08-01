@@ -583,7 +583,9 @@ export function renderSign(canvas: HTMLCanvasElement, dIn: Design, opts: RenderO
     : d.bgType === 'chalk' ? '#2B2B28' : d.bgColor;
   const autoText = isDark(bgRef) ? '#FFFFFF' : '#141414';
   const textColor = (d.textColor && d.textColor !== 'auto') ? d.textColor : autoText;
-  const dimColor = isDark(bgRef) ? 'rgba(255,255,255,0.60)' : 'rgba(0,0,0,0.52)';
+  // Engraving is binary — the laser makes solid core-coloured marks only, so
+  // "dim" text must be core too. Translucency exists only in digital designs.
+  const dimColor = mat ? mat.core : (isDark(bgRef) ? 'rgba(255,255,255,0.60)' : 'rgba(0,0,0,0.52)');
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.save();
@@ -592,10 +594,14 @@ export function renderSign(canvas: HTMLCanvasElement, dIn: Design, opts: RenderO
   ctx.clip();
   drawBackground(ctx, W, H, d);
   if (mat?.brushed) drawBrushedCap(ctx, W, H, mat.cap);
-  ctx.strokeStyle = isDark(bgRef) ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.14)';
-  ctx.lineWidth = 5;
-  buildShapePath(ctx, W, H, d.shape);
-  ctx.stroke();
+  // Border: skipped in engrave mode — a laser doesn't engrave a soft outline,
+  // and the 3D slab's bevel provides the edge definition instead.
+  if (!mat) {
+    ctx.strokeStyle = isDark(bgRef) ? 'rgba(255,255,255,0.20)' : 'rgba(0,0,0,0.14)';
+    ctx.lineWidth = 5;
+    buildShapePath(ctx, W, H, d.shape);
+    ctx.stroke();
+  }
 
   const bounds: Bounds = {};
   const align: CanvasTextAlign = isCentered ? 'center' : 'left';

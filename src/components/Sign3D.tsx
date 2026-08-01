@@ -9,60 +9,85 @@ interface Props {
   className?: string;
 }
 
-/** Same outlines as buildShapePath, expressed as a THREE.Shape (y flipped up). */
-function buildThreeShape(THREE: typeof import('three'), shape: ShapeId, W: number, H: number) {
-  const s = new THREE.Shape();
-  const y = (v: number) => H - v; // canvas y-down → three y-up
+/**
+ * Outline as sampled points in CANVAS coordinates (y-down), matching
+ * buildShapePath exactly, then mirrored to y-up for THREE. Sampling arcs and
+ * beziers as polylines means the 3D silhouette can never disagree with the
+ * 2D canvas — the earlier hand-translated arcs got arch/pin upside down.
+ */
+function outlinePoints(shape: ShapeId, W: number, H: number): [number, number][] {
+  const pts: [number, number][] = [];
+  const add = (x: number, yv: number) => pts.push([x, yv]);
+  // canvas-convention arc: 0 = +x, angles increase towards +y (down-screen)
+  const arc = (cx: number, cy: number, r: number, a0: number, a1: number, seg = 48) => {
+    for (let i = 0; i <= seg; i++) {
+      const a = a0 + (a1 - a0) * (i / seg);
+      add(cx + r * Math.cos(a), cy + r * Math.sin(a));
+    }
+  };
+  const quad = (x0: number, y0: number, cx: number, cy: number, x1: number, y1: number, seg = 10) => {
+    for (let i = 1; i <= seg; i++) {
+      const t = i / seg, u = 1 - t;
+      add(u * u * x0 + 2 * u * t * cx + t * t * x1, u * u * y0 + 2 * u * t * cy + t * t * y1);
+    }
+  };
+
   switch (shape) {
     case 'rounded': {
       const r = 40;
-      s.moveTo(r, y(0)); s.lineTo(W - r, y(0)); s.quadraticCurveTo(W, y(0), W, y(r));
-      s.lineTo(W, y(H - r)); s.quadraticCurveTo(W, y(H), W - r, y(H));
-      s.lineTo(r, y(H)); s.quadraticCurveTo(0, y(H), 0, y(H - r));
-      s.lineTo(0, y(r)); s.quadraticCurveTo(0, y(0), r, y(0));
+      add(r, 0); add(W - r, 0); quad(W - r, 0, W, 0, W, r);
+      add(W, H - r); quad(W, H - r, W, H, W - r, H);
+      add(r, H); quad(r, H, 0, H, 0, H - r);
+      add(0, r); quad(0, r, 0, 0, r, 0);
       break;
     }
     case 'arch': {
       const r = W / 2;
-      s.moveTo(0, y(H)); s.lineTo(0, y(r));
-      s.absarc(W / 2, y(r), r, Math.PI, 0, false);
-      s.lineTo(W, y(H));
+      add(0, H); add(0, r);
+      arc(W / 2, r, r, Math.PI, 2 * Math.PI); // dome over the top, as on canvas
+      add(W, H);
       break;
     }
     case 'circle': {
       const r = Math.min(W, H) / 2;
-      s.absarc(W / 2, y(H / 2), r, 0, Math.PI * 2, false);
+      arc(W / 2, H / 2, r, 0, 2 * Math.PI, 72);
       break;
     }
     case 'speech': {
       const r = 40, tailH = 80, tailX = W * 0.28, tailW = 64, bodyH = H - tailH;
-      s.moveTo(r, y(0)); s.lineTo(W - r, y(0)); s.quadraticCurveTo(W, y(0), W, y(r));
-      s.lineTo(W, y(bodyH - r)); s.quadraticCurveTo(W, y(bodyH), W - r, y(bodyH));
-      s.lineTo(tailX + tailW, y(bodyH)); s.lineTo(tailX + tailW / 2, y(H)); s.lineTo(tailX, y(bodyH));
-      s.lineTo(r, y(bodyH)); s.quadraticCurveTo(0, y(bodyH), 0, y(bodyH - r));
-      s.lineTo(0, y(r)); s.quadraticCurveTo(0, y(0), r, y(0));
+      add(r, 0); add(W - r, 0); quad(W - r, 0, W, 0, W, r);
+      add(W, bodyH - r); quad(W, bodyH - r, W, bodyH, W - r, bodyH);
+      add(tailX + tailW, bodyH); add(tailX + tailW / 2, H); add(tailX, bodyH);
+      add(r, bodyH); quad(r, bodyH, 0, bodyH, 0, bodyH - r);
+      add(0, r); quad(0, r, 0, 0, r, 0);
       break;
     }
     case 'pin': {
       const cx = W / 2, r = W * 0.45, cy = r;
       const tA = Math.asin(Math.min(0.999, r / (H - cy)));
-      // three arcs run counter-clockwise in y-up space; mirror the canvas angles
-      const sA = -(Math.PI / 2 + tA), eA = -(Math.PI / 2 - tA);
-      s.moveTo(cx + r * Math.cos(sA), y(cy) + r * -Math.sin(-sA));
-      s.absarc(cx, y(cy), r, sA, eA, true);
-      s.lineTo(cx, y(H));
+      // canvas: arc from PI/2+tA sweeping through the top back to PI/2-tA
+      arc(cx, cy, r, Math.PI / 2 + tA, Math.PI / 2 + tA + (2 * Math.PI - 2 * tA), 72);
+      add(cx, H);
       break;
     }
     case 'house': {
       const rH = H * 0.35;
-      s.moveTo(0, y(rH)); s.lineTo(W / 2, y(0)); s.lineTo(W, y(rH));
-      s.lineTo(W, y(H)); s.lineTo(0, y(H)); s.lineTo(0, y(rH));
+      add(0, rH); add(W / 2, 0); add(W, rH); add(W, H); add(0, H);
       break;
     }
-    default: { // portrait / landscape
-      s.moveTo(0, y(0)); s.lineTo(W, y(0)); s.lineTo(W, y(H)); s.lineTo(0, y(H)); s.lineTo(0, y(0));
-    }
+    default:
+      add(0, 0); add(W, 0); add(W, H); add(0, H);
   }
+  return pts;
+}
+
+function buildThreeShape(THREE: typeof import('three'), shape: ShapeId, W: number, H: number) {
+  const pts = outlinePoints(shape, W, H);
+  const s = new THREE.Shape();
+  // mirror canvas y-down to three y-up
+  s.moveTo(pts[0][0], H - pts[0][1]);
+  for (let i = 1; i < pts.length; i++) s.lineTo(pts[i][0], H - pts[i][1]);
+  s.closePath();
   return s;
 }
 
@@ -115,25 +140,46 @@ export default function Sign3D({ design, className }: Props) {
       controls.enablePan = false;
       controls.minDistance = 1.4;
       controls.maxDistance = 4.5;
-      controls.maxPolarAngle = Math.PI * 0.65;
+      // From straight-on down to horizontal only — never under the desk.
+      controls.minPolarAngle = 0.12;
+      controls.maxPolarAngle = Math.PI / 2 - 0.02;
+      controls.target.set(0, -0.15, 0);
       st.controls = controls;
 
-      // studio-ish lighting
-      scene.add(new THREE.AmbientLight(0xffffff, 0.65));
-      const key = new THREE.DirectionalLight(0xfff4e6, 1.6);
-      key.position.set(2, 3, 3);
-      scene.add(key);
-      const rim = new THREE.DirectionalLight(0xdfeaff, 0.7);
-      rim.position.set(-3, 1, -2);
-      scene.add(rim);
+      // Lighting: bright ambient + a headlight rig parented to the camera so
+      // whatever face you orbit to is always lit (no dim back side), plus a
+      // fixed warm top light for depth.
+      scene.add(new THREE.AmbientLight(0xffffff, 0.95));
+      const headlight = new THREE.DirectionalLight(0xfff8ee, 1.9);
+      headlight.position.set(0.6, 0.8, 0.2); // relative to camera
+      camera.add(headlight);
+      const fill = new THREE.PointLight(0xffffff, 0.5, 0, 2);
+      fill.position.set(-0.9, 0.2, 0.4);
+      camera.add(fill);
+      scene.add(camera); // camera must be in the scene for child lights to render
+      const top = new THREE.DirectionalLight(0xfff4e6, 0.8);
+      top.position.set(0.5, 4, 1);
+      scene.add(top);
 
-      // benchtop
-      const bench = new THREE.Mesh(
-        new THREE.CylinderGeometry(2.6, 2.6, 0.04, 48),
-        new THREE.MeshStandardMaterial({ color: 0xEFE9DC, roughness: 0.9 }),
+      // reception desk: timber top slab + front fascia + soft back wall
+      const deskTop = new THREE.Mesh(
+        new THREE.BoxGeometry(4.6, 0.09, 2.2),
+        new THREE.MeshStandardMaterial({ color: 0x9A6B43, roughness: 0.55, metalness: 0.05 }),
       );
-      bench.position.y = -0.72;
-      scene.add(bench);
+      deskTop.position.set(0, -0.745, -0.2);
+      scene.add(deskTop);
+      const fascia = new THREE.Mesh(
+        new THREE.BoxGeometry(4.6, 1.1, 0.06),
+        new THREE.MeshStandardMaterial({ color: 0x7C5433, roughness: 0.7 }),
+      );
+      fascia.position.set(0, -1.34, 0.87);
+      scene.add(fascia);
+      const wall = new THREE.Mesh(
+        new THREE.PlaneGeometry(9, 5),
+        new THREE.MeshStandardMaterial({ color: 0xF2ECE1, roughness: 1 }),
+      );
+      wall.position.set(0, 0.8, -2.4);
+      scene.add(wall);
 
       const animate = () => {
         st.frame = requestAnimationFrame(animate);
@@ -198,6 +244,31 @@ export default function Sign3D({ design, className }: Props) {
     }
     uv.needsUpdate = true;
 
+    // Extrude assigns both caps to material 0, which mirrors the design onto
+    // the back. Real 2-ply has cap only on the front: send back-cap triangles
+    // (normal facing -z) to the plain core material instead.
+    {
+      const normals = geo.attributes.normal as import('three').BufferAttribute;
+      const index = geo.index;
+      const newGroups: { start: number; count: number; materialIndex: number }[] = [];
+      for (const g of geo.groups) {
+        if (g.materialIndex !== 0) { newGroups.push({ start: g.start, count: g.count, materialIndex: g.materialIndex ?? 1 }); continue; }
+        // split cap group triangle-by-triangle on face direction
+        let runStart = g.start, runMat = -1;
+        const flush = (end: number) => {
+          if (runMat >= 0 && end > runStart) newGroups.push({ start: runStart, count: end - runStart, materialIndex: runMat });
+        };
+        for (let i = g.start; i < g.start + g.count; i += 3) {
+          const vi = index ? index.getX(i) : i;
+          const mi = normals.getZ(vi) < 0 ? 1 : 0; // back cap → side/core material
+          if (mi !== runMat) { flush(i); runStart = i; runMat = mi; }
+        }
+        flush(g.start + g.count);
+      }
+      geo.clearGroups();
+      for (const g of newGroups) geo.addGroup(g.start, g.count, g.materialIndex);
+    }
+
     const mat = engraveMaterialFor(design);
     const sideColor = mat ? mat.core : '#1A1A1A';
     const faceMat = new THREE.MeshStandardMaterial({
@@ -238,7 +309,7 @@ export default function Sign3D({ design, className }: Props) {
       new THREE.MeshPhysicalMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, roughness: 0.1 }),
     );
     stand.name = standName;
-    stand.position.set(0, -0.7, -0.1);
+    stand.position.set(0, -0.69, -0.1);
     st.scene.add(stand);
   }, [design, ready]);
 
